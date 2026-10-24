@@ -104,14 +104,16 @@ providers:
   - id: mistral
     kind: openai_compat
     api_key_env: MISTRAL_API_KEY
-    enabled: false
-    trains_on_data: unknown  # VERIFY
+    enabled: true
+    trains_on_data: unknown  # VERIFY: bepul tarifda ma'lumot o'qitishga ishlatilishi mumkin; maxfiy ishlar uchun yaroqsiz
     base_url: https://api.mistral.ai/v1   # endpoint: /v1/chat/completions (hujjat)
-    json_mode: json_object   # hujjatda tasdiqlangan
-    # 2026-10-24: kalit /models da ishlaydi, lekin chatda 429 va "limit-req-minute=0": bepul tarif (Experiment) faollashtirilmagan.
-    # console.mistral.ai da tarifni faollashtiring, keyin model (mistral-small-latest) yozing va enabled: true qiling.
-    models: {}               # model nomi # VERIFY
-    limits: {}               # tarif limitlari hujjatda topilmadi, console'dan oling # VERIFY
+    json_mode: json_object   # hujjatda tasdiqlangan; 2026-10-24 sinovda ishladi
+    # Sizning bepul hisobingiz (Admin > Limits, 2026-10-24): faqat ministral oilasi ochiq.
+    # mistral-small/medium/*-latest: 429 (0 so'rov/daqiqa), mistral-large: 403 "obuna darajasida yo'q".
+    # ministral-14b ~1.2 s, o'zbekcha eng yaxshisi; 8b: 188 so'rov/daq; 3b: 750 so'rov/daq, lekin o'zbekchasi zaif.
+    models:
+      default: ministral-14b-2512
+    limits: { rpm: 30, tpm: 900000 }   # javob sarlavhalaridan: 30 so'rov/daq, 937500 token/daq (14b). Oylik chegara noma'lum # VERIFY
   - id: deepseek
     kind: openai_compat
     api_key_env: DEEPSEEK_API_KEY
@@ -138,8 +140,8 @@ providers:
 # Rol bo'yicha fallback zanjiri (chapdan o'ngga). Yoqilmagan yoki kalitsiz provayderlar o'tkazib yuboriladi.
 chains:
   # O'qituvchilar Groq'da yozadi, mudir va uslubchi avval Gemini'da ishlaydi: boshqa model tekshirgani sifatni oshiradi.
-  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, deepseek, openrouter, ollama]
-  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, openrouter, ollama]
-  oqituvchi: [groq, cerebras, gemini, gemini-lite, gemini-lite2, gemini-preview, openrouter, ollama]
+  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, mistral, deepseek, openrouter, ollama]
+  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, mistral, openrouter, ollama]
+  oqituvchi: [groq, cerebras, gemini, gemini-lite, gemini-lite2, gemini-preview, mistral, openrouter, ollama]
 
 mock_chain: [mock, mock-b]
