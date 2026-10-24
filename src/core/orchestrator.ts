@@ -13,6 +13,22 @@ export interface OrchestratorOptions {
   runsDir: string;
 }
 
+/** Foydalanuvchi ishni to'xtatdi. Holat saqlanadi, "Davom ettirish" mumkin. */
+export class RunStoppedError extends Error {
+  constructor() {
+    super("Ish foydalanuvchi tomonidan to'xtatildi. Tayyor qismlar saqlandi, xohlasangiz davom ettirishingiz mumkin");
+    this.name = 'RunStoppedError';
+  }
+}
+
+/** Bitta ish uchun so'rovlar chegarasi tugadi: tokenlar behuda sarflanmasligi uchun to'xtaydi. */
+export class RunLimitError extends Error {
+  constructor(public readonly cap: number) {
+    super(`Bitta ish uchun so'rovlar chegarasi (${cap} ta) tugadi. Ish saqlandi: davom ettirsangiz hisob yangidan boshlanadi (chegara config/kafedra.yaml: max_requests_per_run)`);
+    this.name = 'RunLimitError';
+  }
+}
+
 /** Model yaroqli JSON qaytara olmadi (tuzatish so'rovidan keyin ham). */
 export class JsonParseError extends Error {
   constructor(message: string) {
@@ -114,6 +130,9 @@ export class Orchestrator {
   private state: RunState | null = null;
   private locks = new Map<string, Promise<unknown>>();
   private fatal: Error | null = null;
+  /** Joriy ishda yuborilgan model so'rovlari soni va foydalanuvchi to'xtatganmi */
+  private calls = 0;
+  private cancelled = false;
   /** Joriy ishning tugashini kutish uchun (testlar) */
   done: Promise<void> = Promise.resolve();
 
@@ -197,6 +216,8 @@ export class Orchestrator {
 
   private begin(runId: string, req: RunRequest, resumed: boolean): void {
     this.fatal = null;
+    this.calls = 0;
+    this.cancelled = false;
     this.snapshot = { runId, status: 'running', task: req.task, plan: [], deliverables: {}, final: null, reviews: {} };
     this.bus.emit({
       type: 'run_started',
@@ -257,6 +278,11 @@ export class Orchestrator {
     state: AgentState,
     task_id?: string,
   ): Promise<string> {
+    // Tokenlarni himoya qilish: foydalanuvchi to'xtatgan bo'lsa yoki ish chegaradan oshsa yangi so'rov yuborilmaydi
+    if (this.cancelled) throw new RunStoppedError();
+    const cap = this.cfg.kafedra.limits.max_requests_per_run;
+    if (this.calls >= cap) throw new RunLimitError(cap);
+    this.calls++;
     const res = await this.router.complete(
       {
         system: this.system(agentId, req),
@@ -313,6 +339,10 @@ export class Orchestrator {
   }
 
   private validatePlan(tasks: PlanTask[]): void {
+    const maxTasks = this.cfg.kafedra.limits.max_plan_tasks;
+    if (tasks.length > maxTasks) {
+      throw new Error(`Reja juda katta: ${tasks.length} ta vazifa, ko'pi bilan ${maxTasks} ta bo'lishi kerak. Faqat topshiriqqa zarur vazifalarni qoldiring`);
+    }
     const ids = new Set(tasks.map((t) => t.id));
     if (ids.size !== tasks.length) throw new Error('Rejada vazifa id takrorlangan');
     const types = new Set(Object.keys(this.cfg.deliverables.deliverables));
@@ -369,7 +399,7 @@ export class Orchestrator {
         Plan,
         'mudir',
         req,
-        `${fence('topshiriq', req.task)}${req.material?.trim() ? `\n\nFoydalanuvchi manba material ham berdi (boshi):\n${sourceBlock(req, 1500)}` : ''}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nReja tuz.`,
+        `${fence('topshiriq', req.task)}${req.material?.trim() ? `\n\nFoydalanuvchi manba material ham berdi (boshi):\n${sourceBlock(req, 1500)}` : ''}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nCheklov: faqat topshiriqda aniq so'ralgan natijalar uchun vazifa ber, o'zingdan qo'shimcha vazifa o'ylab topma. Vazifalar soni ko'pi bilan ${this.cfg.kafedra.limits.max_plan_tasks} ta.\n\nReja tuz.`,
         { purpose: 'plan', roster },
         'thinking',
         undefined,
@@ -415,7 +445,15 @@ export class Orchestrator {
         })
         .catch((e: unknown) => {
           // Limit/byudjet tugasa butun ish to'xtaydi; holat saqlangani uchun keyin davom ettiriladi
-          if (e instanceof LimitExhaustedError || e instanceof BudgetExceededError || e instanceof SensitiveRoutingError) this.fatal ??= e;
+          if (
+            e instanceof LimitExhaustedError ||
+            e instanceof BudgetExceededError ||
+            e instanceof SensitiveRoutingError ||
+            e instanceof RunStoppedError ||
+            e instanceof RunLimitError
+          ) {
+            this.fatal ??= e;
+          }
           failed.add(t.id);
           this.emitState(t.assignee, 'error', `Xato: ${short((e as Error).message, 50)}`, t.id);
         })
@@ -485,6 +523,17 @@ export class Orchestrator {
     list[attempt] = { attempt, verdict: r.verdict, score: r.score, issues: r.issues, unreviewed, lint };
   }
 
+  /**
+   * Ishni to'xtatadi: yangi model so'rovi yuborilmaydi. Hozir javob kutilayotgan so'rov tugaguncha
+   * kutiladi (uni uzib bo'lmaydi), keyin ish holati saqlanib to'xtaydi va "Davom ettirish" mumkin bo'ladi.
+   */
+  cancel(): boolean {
+    if (this.snapshot.status !== 'running') return false;
+    this.cancelled = true;
+    this.bus.emit({ type: 'agent_state', agent: 'mudir', state: 'idle', text: "To'xtatilmoqda…" });
+    return true;
+  }
+
   /** Mudir xulosasi: nima tayyorlandi, o'rtacha baho, ogohlantirishlar va manba talab qiladigan joylar. */
   private buildSummary(tasks: PlanTask[], finished: Set<string>, failed: Set<string>): string {
     const done = tasks.filter((t) => finished.has(t.id));
@@ -509,6 +558,7 @@ export class Orchestrator {
         : "[MANBA KERAK] belgilari yo'q, lekin aniq raqam va faktlarni baribir tekshirib ko'ring.",
     );
     if (failed.size) lines.push(`Bajarilmagan vazifalar: ${[...failed].join(', ')}.`);
+    lines.push(`Jami model so'rovlari: ${this.calls} ta.`);
     return lines.join(' ');
   }
 
@@ -704,7 +754,11 @@ export class Orchestrator {
         ? 'limits_exhausted'
         : e instanceof BudgetExceededError
           ? 'budget'
-          : e instanceof SensitiveRoutingError
+          : e instanceof RunStoppedError
+            ? 'stopped'
+            : e instanceof RunLimitError
+              ? 'run_limit'
+              : e instanceof SensitiveRoutingError
             ? 'sensitive_routing'
             : e instanceof JsonParseError
               ? 'bad_json'
@@ -724,7 +778,13 @@ export class Orchestrator {
       text:
         reason === 'limits_exhausted'
           ? 'Limit tugadi: ish saqlandi, keyinroq davom ettiring'
-          : reason === 'bad_json' && !resumable
+          : reason === 'stopped'
+            ? resumable
+              ? "To'xtatildi: tayyor qismlar saqlandi, davom ettirish mumkin"
+              : "To'xtatildi"
+            : reason === 'run_limit'
+              ? "So'rovlar chegarasi tugadi: ish saqlandi (tokenlar himoyasi)"
+              : reason === 'bad_json' && !resumable
             ? 'Model reja tuza olmadi (yaroqsiz JSON). Boshqa model yoki qayta urinib ko\'ring'
             : short(msg, 120),
       data: { error: msg, reason, resumable, run_id: this.snapshot.runId },

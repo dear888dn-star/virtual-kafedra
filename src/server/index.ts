@@ -122,7 +122,12 @@ server.get('/api/run/export.docx', (req, res) => {
     .send(Buffer.from(markdownToDocx(md)));
 });
 
-server.get('/api/runs',(_req, res) => res.json(app.orchestrator.listRuns()));
+// Ishlayotgan topshiriqni to'xtatish: yangi model so'rovi yuborilmaydi, holat saqlanadi
+server.post('/api/run/stop', (_req, res) => {
+  res.json({ stopping: app.orchestrator.cancel() });
+});
+
+server.get('/api/runs', (_req, res) => res.json(app.orchestrator.listRuns()));
 
 server.post('/api/runs/:id/resume', (req, res) => {
   try {

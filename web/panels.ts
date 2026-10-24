@@ -67,6 +67,7 @@ export interface TaskApi {
   submit(body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string }): Promise<SubmitResult>;
   listRuns(): Promise<RunItem[]>;
   resume(id: string): Promise<string | null>;
+  stop(): Promise<void>;
 }
 
 const RUN_STATUS: Record<string, string> = { running: 'jarayonda', finished: 'tugagan', failed: "to'xtagan" };
@@ -87,6 +88,12 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
   const warn = h('div', { class: 'note warn', hidden: true }, "Imtihon yoki talaba ma'lumoti bo'lishi mumkin. \"Maxfiy\" katakchasini belgilashni o'ylab ko'ring.");
   const err = h('div', { class: 'note err', hidden: true, role: 'alert' });
   const send = h('button', { class: 'btn', type: 'button' }, 'Yuborish');
+  const stopBtn = h('button', { class: 'btn ghost', type: 'button', hidden: true, title: "Yangi model so'rovlari yuborilmaydi; tayyor qismlar saqlanadi" }, "To'xtatish");
+  stopBtn.addEventListener('click', async () => {
+    stopBtn.disabled = true;
+    stopBtn.textContent = "To'xtatilmoqda…";
+    await api.stop();
+  });
   const sensInfo = h('div', { class: 'note', hidden: true });
   const piiBox = h('div', { class: 'note warn', hidden: true, role: 'alert' });
   const failNote = h('div', { class: 'note err', hidden: true, role: 'alert' });
@@ -119,7 +126,7 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
           ta.focus();
         },
       }, 'Namuna'),
-      send,
+      h('div', { class: 'row', style: 'margin:0' }, stopBtn, send),
     ),
     h('p', { class: 'muted', style: 'margin-top:8px' }, 'Ctrl+Enter — yuborish'),
     runsBox,
@@ -237,6 +244,11 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
     render() {
       send.disabled = store.status === 'running';
       send.textContent = store.status === 'running' ? 'Bajarilmoqda…' : 'Yuborish';
+      stopBtn.hidden = store.status !== 'running';
+      if (store.status !== 'running') {
+        stopBtn.disabled = false;
+        stopBtn.textContent = "To'xtatish";
+      }
       if (store.status === 'failed' && store.error) {
         failNote.textContent = store.error;
         failNote.hidden = false;

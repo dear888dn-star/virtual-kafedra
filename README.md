@@ -82,6 +82,13 @@ Hamma narsa `config/` va `prompts/` da, kodni o'zgartirish shart emas.
 - **Avtomatik format tekshiruvi** (model fikriga bog'liq emas): testda savollar soni, 4 ta variant va "To'g'ri javob"; masalada yechim va javob; slaydlar soni; glossariyda 3 tilli jadval; ma'ruzada kamida 3 bo'lim; "Albatta!" kabi kirish gaplari. Topshiriqda aytilgan son ("10 ta test") ham tekshiriladi. Muammo topilsa uslubchi "approve" desa ham ish aniq izoh bilan qaytariladi.
 - **Mudir xulosasi** modelsiz, ma'lumotlardan yig'iladi: o'rtacha baho, ogohlantirish bilan qabul qilingan ishlar va `[MANBA KERAK]` belgilari soni (bitta so'rov tejaladi).
 
+### Tokenlar himoyasi
+- **Hech narsa o'zidan ishlamaydi.** Model so'rovlari faqat siz "Yuborish" yoki "Davom ettirish" ni bosganingizda yuboriladi. Fon jarayonlari, taymerlar va avtomatik qayta ishga tushirish yo'q; server ochiq turishi so'rov sarflamaydi.
+- **Mudir o'zidan vazifa qo'shmaydi.** Prompt faqat topshiriqda so'ralgan natijalarga vazifa berishni talab qiladi va reja `max_plan_tasks` (standart 8) dan oshsa rad etiladi (o'qituvchilarga bironta so'rov ketmaydi).
+- **Bitta ish uchun qat'iy chegara.** `max_requests_per_run` (standart 60) model so'rovidan keyin ish saqlanib to'xtaydi. Davom ettirsangiz hisob yangidan boshlanadi.
+- **To'xtatish tugmasi.** Ish ketayotganda "Topshiriq" bo'limida chiqadi: yangi so'rov yuborilmaydi (hozir javob kutilayotgani tugaguncha), tayyor qismlar saqlanadi va keyin davom ettirish mumkin.
+- Yakuniy hujjat xulosasida "Jami model so'rovlari" soni yoziladi. Tez-tez qayta ishlash kerak bo'lmasa, `max_revisions` ni kamaytiring.
+
 ### Limitlar va fallback
 - Har bir provayder uchun daqiqalik va kunlik limit hisoblanadi. Kunlik hisob `state/usage.json` da saqlanadi va provayderning o'z kuni bo'yicha yangilanadi (`reset_tz`).
 - 429, 5xx yoki timeout bo'lsa: shu provayderda 2 marta kutib qayta uriniladi (`Retry-After` bo'lsa unga rioya), so'ng zanjirdagi keyingisiga o'tiladi. Ofisda personaj "limit kutilmoqda" holatiga o'tadi.

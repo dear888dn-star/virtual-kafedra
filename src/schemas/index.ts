@@ -26,6 +26,8 @@ export const KafedraCfg = z
       concurrency: z.number().int().min(1).max(10),
       max_input_chars: z.number().int().min(100).max(200000),
       max_material_chars: z.number().int().min(0).max(60000).default(30000),
+      max_plan_tasks: z.number().int().min(1).max(30).default(8),
+      max_requests_per_run: z.number().int().min(3).max(1000).default(60),
     }),
     agents: z.array(AgentCfg).min(3),
   })

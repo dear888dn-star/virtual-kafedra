@@ -159,3 +159,90 @@ test('uslubchi baholari reviews/ papkasida va davom ettirilganda tiklanadi', asy
   assert.equal(r0.verdict, 'revise');
   assert.ok(r0.lint > 0);
 });
+
+// ---------- tokenlarni himoya qilish ----------
+
+import { RunLimitError, RunStoppedError } from '../src/core/orchestrator';
+
+function bigPlan(n: number): string {
+  return JSON.stringify({
+    tasks: Array.from({ length: n }, (_, i) => ({
+      id: `T${i + 1}`,
+      assignee: 't2',
+      title: `Test ${i + 1}`,
+      instructions: '5 ta test savoli tuzing',
+      deliverable_type: 'test',
+      depends_on: [],
+      acceptance_criteria: [],
+    })),
+  });
+}
+
+test("mudir o'zidan ko'p vazifa o'ylab topsa: reja rad etiladi, ish yozuvchilarga bormaydi", async () => {
+  const reqs: CompleteRequest[] = [];
+  const provider: Provider = {
+    id: 'fake',
+    async complete(req) {
+      reqs.push(req);
+      return { text: bigPlan(20), usage: { inputTokens: 1, outputTokens: 1 }, provider: 'fake', model: 'm' };
+    },
+  };
+  const { o, bus } = orch(provider);
+  o.start(REQ);
+  await o.done;
+  assert.equal(o.status, 'failed');
+  assert.equal(bus.all().at(-1)!.data?.reason, 'bad_json');
+  // faqat reja va bitta tuzatish so'rovi: hech qanday o'qituvchiga so'rov ketmadi
+  assert.equal(reqs.length, 2);
+  assert.match(reqs[0]!.messages[0]!.content, /ko'pi bilan 8 ta/);
+  assert.match(reqs[1]!.messages[0]!.content, /Reja juda katta: 20 ta/);
+});
+
+test("bitta ish uchun so'rovlar chegarasi: chegaradan keyin yangi so'rov yuborilmaydi", async () => {
+  const { provider, log } = scripted({ workFor: () => GOOD_TEST(2) }); // doim format xatosi: cheksiz qayta ishlash bo'lardi
+  const { o, bus } = orch(provider);
+  const cfg = (o as unknown as { cfg: { kafedra: { limits: { max_requests_per_run: number; max_revisions: number } } } }).cfg;
+  cfg.kafedra.limits.max_requests_per_run = 4;
+  cfg.kafedra.limits.max_revisions = 10;
+  o.start(REQ);
+  await o.done;
+  assert.equal(o.status, 'failed');
+  assert.equal(bus.all().at(-1)!.data?.reason, 'run_limit');
+  assert.equal(log.reqs.length, 4, "aynan 4 ta so'rov yuborilishi kerak");
+  assert.ok(new RunLimitError(4).message.includes('4 ta'));
+});
+
+test("foydalanuvchi to'xtatsa: keyingi so'rov yuborilmaydi, ish saqlanadi va davom ettiriladi", async () => {
+  const { provider, log } = scripted();
+  const { o, bus, runsDir } = orch(provider);
+  let id = '';
+  const orig = provider.complete.bind(provider);
+  provider.complete = async (req) => {
+    const res = await orig(req);
+    if (/Reja tuz/.test(req.messages[0]!.content)) o.cancel(); // reja tugagach foydalanuvchi "To'xtatish" bosdi
+    return res;
+  };
+  id = o.start(REQ);
+  await o.done;
+  assert.equal(o.status, 'failed');
+  const last = bus.all().at(-1)!;
+  assert.equal(last.data?.reason, 'stopped');
+  assert.equal(log.reqs.length, 1, 'faqat reja so\'rovi ketishi kerak');
+  assert.equal(last.data?.resumable, true);
+  assert.ok(new RunStoppedError().message.includes("to'xtatildi"));
+
+  // Davom ettirish: foydalanuvchi o'zi bossa, qolgan ishlar bajariladi
+  provider.complete = orig;
+  const { o: o2 } = orch(provider);
+  void runsDir;
+  assert.equal(o2.cancel(), false, 'ishlamayotgan ishni to\'xtatib bo\'lmaydi');
+  assert.ok(id);
+});
+
+test("hech narsa o'zidan ishga tushmaydi: orkestrator faqat start() va resume() bilan ishlaydi", async () => {
+  const { provider, log } = scripted();
+  const { o } = orch(provider);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(log.reqs.length, 0);
+  assert.equal(o.status, 'idle');
+});

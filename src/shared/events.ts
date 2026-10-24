@@ -63,7 +63,7 @@ export interface ProviderInfo {
 
 export interface PublicConfig {
   kafedra: { name: string; audience: string; languages: string[]; default_language: string };
-  limits: { max_revisions: number; concurrency: number; max_input_chars: number; max_material_chars: number };
+  limits: { max_revisions: number; concurrency: number; max_input_chars: number; max_material_chars: number; max_plan_tasks: number; max_requests_per_run: number };
   agents: AgentInfo[];
   providers: ProviderInfo[];
   chains: Record<string, string[]>;

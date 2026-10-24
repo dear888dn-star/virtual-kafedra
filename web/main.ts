@@ -121,7 +121,14 @@ async function main(): Promise<void> {
       return "Serverga ulanib bo'lmadi.";
     }
   };
-  const taskP = taskPanel(store, { submit, listRuns, resume });
+  const stop = async (): Promise<void> => {
+    try {
+      await fetch('/api/run/stop', { method: 'POST' });
+    } catch {
+      // aloqa bo'lmasa, tugma qayta bosiladi
+    }
+  };
+  const taskP = taskPanel(store, { submit, listRuns, resume, stop });
   const panels: Panel[] = [
     taskP,
     boardPanel(store),

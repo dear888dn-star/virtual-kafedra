@@ -10,6 +10,8 @@ limits:
   concurrency: 3          # bir vaqtda ishlaydigan o'qituvchilar soni
   max_input_chars: 20000  # topshiriq matnining maksimal hajmi
   max_material_chars: 30000  # manba materialning maksimal hajmi
+  max_plan_tasks: 8          # mudir bitta topshiriqni ko'pi bilan nechta vazifaga bo'la oladi
+  max_requests_per_run: 60   # bitta topshiriq uchun model so'rovlarining qat'iy chegarasi (tokenlarni himoya qiladi)
 
 # Agentlar. O'qituvchi qo'shish uchun yangi qator yozing (role: oqituvchi).
 agents:
