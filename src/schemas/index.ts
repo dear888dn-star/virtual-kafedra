@@ -61,6 +61,8 @@ export const ProviderCfg = z.object({
   json_mode: z.enum(['json_object', 'none']).default('none'),
   max_tokens_field: z.enum(['max_tokens', 'max_completion_tokens']).default('max_tokens'),
   timeout_ms: z.number().int().min(1000).default(60000),
+  /** Fikrlovchi modellar uchun (Gemini 3.x va h.k.): tezlik va token sarfini kamaytiradi. Hamma model qabul qilmaydi. */
+  reasoning_effort: z.enum(['none', 'minimal', 'low', 'medium', 'high']).optional(),
   limits: z
     .object({ rpm: z.number().optional(), rpd: z.number().optional(), tpm: z.number().optional() })
     .default({}),

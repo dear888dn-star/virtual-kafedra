@@ -17,6 +17,7 @@ export interface OpenAICompatOptions {
   jsonMode?: 'json_object' | 'none';
   /** Ba'zi provayderlar `max_completion_tokens` talab qiladi */
   maxTokensField?: 'max_tokens' | 'max_completion_tokens';
+  reasoningEffort?: 'none' | 'minimal' | 'low' | 'medium' | 'high';
   fetchFn?: typeof fetch;
 }
 
@@ -30,7 +31,7 @@ export function parseRetryAfter(value: string | null, now = Date.now()): number 
 }
 
 interface ChatResponse {
-  choices?: { message?: { content?: string | null } }[];
+  choices?: { finish_reason?: string; message?: { content?: string | null } }[];
   usage?: { prompt_tokens?: number; completion_tokens?: number };
   model?: string;
 }
@@ -48,12 +49,26 @@ export class OpenAICompatProvider implements Provider {
 
   async complete(req: CompleteRequest): Promise<CompleteResult> {
     if (!req.model) throw new BadRequestError(`${this.id}: model tanlanmagan`);
+    // Fikrlovchi modellarda "fikrlash" tokenlari ham chegaraga kiradi: oldindan zaxira beramiz,
+    // javob chegaraga urilsa (kesilgan yoki bo'sh) chegarani oshirib bir marta qayta uriniladi.
+    const thinking = this.opts.reasoningEffort && this.opts.reasoningEffort !== 'none' ? 2048 : 0;
+    const first = await this.once(req, req.maxTokens + thinking);
+    if (!first.truncated) return first.result!;
+    const second = await this.once(req, Math.min((req.maxTokens + thinking) * 3, 12000));
+    if (second.result && (second.result.text !== '' || !first.result)) return second.result;
+    if (first.result && first.result.text !== '') return first.result; // kesilgan bo'lsa ham bor javobni qaytaramiz
+    throw new TransientError(`${this.id}: model bo'sh javob qaytardi (token chegarasi)`);
+  }
+
+  /** Bitta so'rov. finish_reason=length bo'lsa truncated=true (matn bo'sh yoki kesilgan bo'lishi mumkin). */
+  private async once(req: CompleteRequest, maxTokens: number): Promise<{ result: CompleteResult | null; truncated: boolean }> {
     const body: Record<string, unknown> = {
       model: req.model,
       messages: [{ role: 'system', content: req.system }, ...req.messages],
       temperature: req.temperature,
-      [this.opts.maxTokensField ?? 'max_tokens']: req.maxTokens,
+      [this.opts.maxTokensField ?? 'max_tokens']: maxTokens,
     };
+    if (this.opts.reasoningEffort) body.reasoning_effort = this.opts.reasoningEffort;
     if (req.json && this.opts.jsonMode === 'json_object') body.response_format = { type: 'json_object' };
 
     const ctl = new AbortController();
@@ -91,15 +106,18 @@ export class OpenAICompatProvider implements Provider {
       throw new TransientError(`${this.id}: javob JSON emas`);
     }
     const text = data.choices?.[0]?.message?.content;
-    if (typeof text !== 'string') throw new TransientError(`${this.id}: javobda matn yo'q`);
-    return {
+    const truncated = data.choices?.[0]?.finish_reason === 'length';
+    if (typeof text !== 'string' && !truncated) throw new TransientError(`${this.id}: javobda matn yo'q`);
+    if (typeof text !== 'string') return { result: null, truncated: true };
+    const result: CompleteResult = {
       text,
       usage: {
         inputTokens: data.usage?.prompt_tokens ?? Math.ceil((req.system.length + req.messages.reduce((n, m) => n + m.content.length, 0)) / 4),
         outputTokens: data.usage?.completion_tokens ?? Math.ceil(text.length / 4),
       },
       provider: this.id,
-      model: data.model ?? req.model,
+      model: data.model ?? req.model!,
     };
+    return { result, truncated };
   }
 }

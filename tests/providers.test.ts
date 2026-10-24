@@ -300,3 +300,48 @@ test('Retry-After: soniya va HTTP sana', () => {
   const now = Date.UTC(2026, 0, 1, 0, 0, 0);
   assert.equal(parseRetryAfter('Thu, 01 Jan 2026 00:00:10 GMT', now), 10_000);
 });
+
+test('adapter: reasoning_effort yuboriladi, fikrlash zaxirasi qo\'shiladi', async () => {
+  const bodies: Record<string, unknown>[] = [];
+  const p = new OpenAICompatProvider('x', {
+    baseUrl: 'https://example.test/v1',
+    apiKey: 'k',
+    reasoningEffort: 'low',
+    fetchFn: (async (_u: string, init: RequestInit) => {
+      bodies.push(JSON.parse(String(init.body)));
+      return resp(200, { choices: [{ finish_reason: 'stop', message: { content: 'ok' } }] });
+    }) as unknown as typeof fetch,
+  });
+  await p.complete({ ...REQ, model: 'm', maxTokens: 100 });
+  assert.equal(bodies[0]!.reasoning_effort, 'low');
+  assert.equal(bodies[0]!.max_tokens, 2148);
+});
+
+test('adapter: bo\'sh (token chegarasi) javobda chegarani oshirib qayta uriladi', async () => {
+  const limits: number[] = [];
+  const p = new OpenAICompatProvider('x', {
+    baseUrl: 'https://example.test/v1',
+    apiKey: 'k',
+    fetchFn: (async (_u: string, init: RequestInit) => {
+      const b = JSON.parse(String(init.body));
+      limits.push(b.max_tokens);
+      return limits.length === 1
+        ? resp(200, { choices: [{ finish_reason: 'length', message: { role: 'assistant' } }] })
+        : resp(200, { choices: [{ finish_reason: 'stop', message: { content: 'to\'liq javob' } }] });
+    }) as unknown as typeof fetch,
+  });
+  const r = await p.complete({ ...REQ, model: 'm', maxTokens: 100 });
+  assert.equal(r.text, "to'liq javob");
+  assert.deepEqual(limits, [100, 300]);
+});
+
+test('adapter: ikkinchi urinishda ham kesilgan bo\'lsa, bor matn qaytariladi; butunlay bo\'sh bo\'lsa xato', async () => {
+  const mk = (content?: string) =>
+    new OpenAICompatProvider('x', {
+      baseUrl: 'https://example.test/v1',
+      apiKey: 'k',
+      fetchFn: (async () => resp(200, { choices: [{ finish_reason: 'length', message: content === undefined ? {} : { content } }] })) as unknown as typeof fetch,
+    });
+  assert.equal((await mk('yarmi').complete({ ...REQ, model: 'm' })).text, 'yarmi');
+  await assert.rejects(mk().complete({ ...REQ, model: 'm' }), (e: Error) => e instanceof TransientError && /bo'sh javob/.test(e.message));
+});

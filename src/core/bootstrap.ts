@@ -76,6 +76,7 @@ export function buildRealProviders(
       timeoutMs: p.timeout_ms,
       jsonMode: p.json_mode,
       maxTokensField: p.max_tokens_field,
+      reasoningEffort: p.reasoning_effort,
       fetchFn,
     });
     items.set(p.id, chainItem(p, provider, true));

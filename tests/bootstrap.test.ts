@@ -5,7 +5,8 @@ import { loadConfig } from '../src/core/config';
 
 function cfgWith(enable: string[]) {
   const cfg = loadConfig();
-  for (const p of cfg.providers.providers) if (enable.includes(p.id)) p.enabled = true;
+  // Testlar foydalanuvchi sozlamalariga bog'liq bo'lmasligi uchun avval hamma real provayderni o'chiramiz
+  for (const p of cfg.providers.providers) if (p.kind !== 'mock') p.enabled = enable.includes(p.id);
   return cfg;
 }
 const base = { usagePath: null, speed: 0, sleep: async () => {} };
@@ -17,7 +18,7 @@ test('kalitsiz: real provayder yoqilgan bo\'lsa ham aniq xabar bilan mock\'ga tu
 });
 
 test('hech narsa yoqilmagan: mock va tushuntirish', () => {
-  const app = boot({ ...base, cfg: loadConfig(), env: {} });
+  const app = boot({ ...base, cfg: cfgWith([]), env: {} });
   assert.equal(app.mock, true);
   assert.ok(app.problems.some((p) => /yoqilmagan/.test(p)));
 });

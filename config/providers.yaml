@@ -21,13 +21,15 @@ providers:
   - id: gemini
     kind: gemini
     api_key_env: GEMINI_API_KEY
-    enabled: false
+    enabled: true
     trains_on_data: true     # bepul tarifda kontent mahsulotlarni yaxshilash uchun ishlatilishi mumkin (shartlarni tekshiring) # VERIFY
     base_url: https://generativelanguage.googleapis.com/v1beta/openai   # rasmiy hujjat, 2026-10-24
     reset_tz: America/Los_Angeles   # hujjat: kunlik kvota Tinch okean vaqti yarim tunida nolga tushadi
     json_mode: none                 # json_object hujjatda aniq yozilmagan # VERIFY
+    reasoning_effort: low           # hujjat: minimal/low/medium/high; 3.8-flash 'minimal' ni rad etadi, 'low' ishlaydi
     models:
-      default: gemini-3.8-flash     # hujjatdagi misol nomi; mavjudligini AI Studio'da tekshiring # VERIFY
+      # Sinov (2026-10-24, bepul kalit): 3.1-flash-lite ~2s, 3.5-flash ~5s, 3.7/3.8-flash ~53s (juda sekin)
+      default: gemini-3.5-flash
     limits: { rpm: 5, rpd: 100 }    # sahifa raqam bermaydi: AI Studio > rate limit'dan oling # VERIFY
   - id: groq
     kind: openai_compat
