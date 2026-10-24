@@ -4,8 +4,9 @@ import type { ZodType } from 'zod';
 import type { Router } from '../providers/router';
 import { BudgetExceededError, LimitExhaustedError, SensitiveRoutingError, type CallMeta } from '../providers/types';
 import { Plan, Review, RunRequest, type PlanTask } from '../schemas';
-import type { AgentState, PlanTaskInfo, RunSnapshot } from '../shared/events';
+import type { AgentState, PlanTaskInfo, ReviewInfo, RunSnapshot } from '../shared/events';
 import type { AppConfig } from './config';
+import { expectedCountFor, lintDeliverable } from './lint';
 import type { EventBus } from './events';
 
 export interface OrchestratorOptions {
@@ -59,6 +60,14 @@ const LANG_NAMES: Record<string, string> = {
 const MAX_TOKENS = { plan: 2500, work: 4096, review: 1200, assemble: 700 } as const;
 /** Bog'liq materialni so'rovga qo'shishda kesish chegarasi (bepul limitlarni tejash uchun) */
 const DEP_CHAR_LIMIT = 8000;
+/** Manba material nechta belgigacha so'rovga qo'shiladi */
+const MATERIAL_CHAR_LIMIT = 10000;
+
+function sourceBlock(req: RunRequest, limit: number): string {
+  const m = req.material?.trim();
+  if (!m) return '';
+  return fence('manba_material', m.length > limit ? `${m.slice(0, limit)}\n[…qisqartirildi]` : m);
+}
 
 function slugify(s: string): string {
   const slug = s
@@ -99,6 +108,7 @@ export class Orchestrator {
     plan: [],
     deliverables: {},
     final: null,
+    reviews: {},
   };
   private runDir: string | null = null;
   private state: RunState | null = null;
@@ -119,7 +129,7 @@ export class Orchestrator {
   }
 
   getSnapshot(): RunSnapshot {
-    return { ...this.snapshot, deliverables: { ...this.snapshot.deliverables } };
+    return { ...this.snapshot, deliverables: { ...this.snapshot.deliverables }, reviews: { ...this.snapshot.reviews } };
   }
 
   // ---------- ishni boshlash va davom ettirish ----------
@@ -187,7 +197,7 @@ export class Orchestrator {
 
   private begin(runId: string, req: RunRequest, resumed: boolean): void {
     this.fatal = null;
-    this.snapshot = { runId, status: 'running', task: req.task, plan: [], deliverables: {}, final: null };
+    this.snapshot = { runId, status: 'running', task: req.task, plan: [], deliverables: {}, final: null, reviews: {} };
     this.bus.emit({
       type: 'run_started',
       text: resumed ? 'Ish davom ettirilmoqda' : 'Topshiriq qabul qilindi',
@@ -359,7 +369,7 @@ export class Orchestrator {
         Plan,
         'mudir',
         req,
-        `${fence('topshiriq', req.task)}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nReja tuz.`,
+        `${fence('topshiriq', req.task)}${req.material?.trim() ? `\n\nFoydalanuvchi manba material ham berdi (boshi):\n${sourceBlock(req, 1500)}` : ''}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nReja tuz.`,
         { purpose: 'plan', roster },
         'thinking',
         undefined,
@@ -439,20 +449,8 @@ export class Orchestrator {
     // 3) Yig'ish
     if (finished.size === 0) throw new Error('Birorta vazifa ham bajarilmadi');
     this.emitState('mudir', 'writing', "Yakuniy hujjatni yig'yapman…");
-    const quality = plan.tasks
-      .filter((t) => finished.has(t.id))
-      .map((t) => {
-        const st = this.state!.tasks[t.id]!;
-        return `- ${t.id} ${t.title}: ${st.score ?? '?'}/10${st.warned ? ' (ogohlantirish bilan qabul qilingan)' : ''}`;
-      })
-      .join('\n');
-    const summary = await this.call(
-      'mudir',
-      req,
-      `${fence('topshiriq', req.task)}\n\nBajarilgan vazifalar va uslubchi bahosi:\n${quality}${failed.size ? `\nBajarilmagan: ${[...failed].join(', ')}` : ''}\n\nYig'ish bosqichi: qisqa xulosa yoz.`,
-      { purpose: 'assemble' },
-      'writing',
-    );
+    // Xulosa modelsiz, ma'lumotlardan yig'iladi: aniq, takrorlanadigan va bitta so'rov tejaladi.
+    const summary = this.buildSummary(plan.tasks, finished, failed);
     const sections = plan.tasks
       .filter((t) => this.snapshot.deliverables[t.id])
       .map((t) => `## ${t.title}\n\n${this.snapshot.deliverables[t.id]}`);
@@ -482,6 +480,38 @@ export class Orchestrator {
     });
   }
 
+  private recordReview(taskId: string, attempt: number, r: Review, unreviewed: boolean, lint: number): void {
+    const list = (this.snapshot.reviews[taskId] ??= []);
+    list[attempt] = { attempt, verdict: r.verdict, score: r.score, issues: r.issues, unreviewed, lint };
+  }
+
+  /** Mudir xulosasi: nima tayyorlandi, o'rtacha baho, ogohlantirishlar va manba talab qiladigan joylar. */
+  private buildSummary(tasks: PlanTask[], finished: Set<string>, failed: Set<string>): string {
+    const done = tasks.filter((t) => finished.has(t.id));
+    const titles = Object.fromEntries(Object.entries(this.cfg.deliverables.deliverables).map(([k, v]) => [k, v.title]));
+    const kinds = [...new Set(done.map((t) => (titles[t.deliverable_type] ?? t.deliverable_type).toLowerCase()))];
+    const scores = done.map((t) => this.state!.tasks[t.id]?.score).filter((x): x is number => typeof x === 'number' && x > 0);
+    const avg = scores.length ? (scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(1) : null;
+    const warned = done.filter((t) => this.state!.tasks[t.id]?.warned).map((t) => t.id);
+    const needSource = done
+      .map((t) => ({ id: t.id, n: (this.snapshot.deliverables[t.id]?.match(/\[MANBA KERAK\]/g) ?? []).length }))
+      .filter((x) => x.n > 0);
+    const lines = [`Kafedra ${done.length} ta material tayyorladi: ${kinds.join(', ')}.`];
+    if (avg) lines.push(`Uslubchining o'rtacha bahosi: ${avg}/10.`);
+    lines.push(
+      warned.length
+        ? `Ogohlantirish bilan qabul qilingan ishlar (qo'lda ko'zdan kechiring): ${warned.join(', ')}.`
+        : 'Hamma ish uslubchi tomonidan to\'liq qabul qilindi.',
+    );
+    lines.push(
+      needSource.length
+        ? `Manba talab qiladigan joylar [MANBA KERAK]: ${needSource.map((x) => `${x.id} (${x.n} ta)`).join(', ')}. Ishlatishdan oldin ularni manba bilan tekshiring.`
+        : "[MANBA KERAK] belgilari yo'q, lekin aniq raqam va faktlarni baribir tekshirib ko'ring.",
+    );
+    if (failed.size) lines.push(`Bajarilmagan vazifalar: ${[...failed].join(', ')}.`);
+    return lines.join(' ');
+  }
+
   /** Davom ettirishda UI va xotirani saqlangan holatdan tiklaydi. */
   private restore(plan: Plan, st: RunState): void {
     const planInfo: PlanTaskInfo[] = plan.tasks;
@@ -497,6 +527,16 @@ export class Orchestrator {
       const file = join(this.runDir!, 'deliverables', `${t.id}.md`);
       if (existsSync(file)) this.snapshot.deliverables[t.id] = readFileSync(file, 'utf8');
       else if (ts.status !== 'pending') ts.status = 'pending';
+      for (let a = 0; a <= 10; a++) {
+        const rf = join(this.runDir!, 'reviews', `${t.id}-${a}.json`);
+        if (!existsSync(rf)) break;
+        try {
+          const r = JSON.parse(readFileSync(rf, 'utf8')) as Review & { unreviewed?: boolean; lint?: number };
+          this.recordReview(t.id, a, r, !!r.unreviewed, r.lint ?? 0);
+        } catch {
+          // buzilgan baho fayli: o'tkazib yuboramiz
+        }
+      }
       if (ts.status === 'done') {
         this.bus.emit({
           type: 'review_result',
@@ -535,6 +575,7 @@ export class Orchestrator {
             req,
             [
               fence('topshiriq', req.task),
+              sourceBlock(req, MATERIAL_CHAR_LIMIT),
               `Vazifa: ${t.title}\n${t.instructions}`,
               `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
               `Uslubchi rubrikasi:\n${rubric.map((c) => `- ${c}`).join('\n') || '-'}`,
@@ -560,7 +601,12 @@ export class Orchestrator {
 
       const attempt = ts.attempt;
       let unreviewed = false;
-      const review = await this.withAgent('uslubchi', async () => {
+      // Ob'ektiv format tekshiruvi: uslubchi yumshoq baholasa ham tuzilma buzilgan ish qaytariladi
+      const lint = lintDeliverable(t.deliverable_type, text, { expectedCount: expectedCountFor(t.deliverable_type, t.instructions) });
+      const lintText = lint.length
+        ? `Avtomatik format tekshiruvi MUAMMOLARNI topdi:\n${lint.map((i) => `- ${i.place}: ${i.problem}`).join('\n')}`
+        : "Avtomatik format tekshiruvi: muammo topilmadi (tuzilma, sonlar to'g'ri).";
+      const modelReview = await this.withAgent('uslubchi', async () => {
         this.emitState('uslubchi', 'reviewing', `Tekshiryapman: ${short(t.title, 30)}`, t.id);
         try {
           return await this.callJson(
@@ -570,7 +616,8 @@ export class Orchestrator {
             [
               `Rubrika:\n${rubric.map((c) => `- ${c}`).join('\n') || '-'}`,
               `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
-              `Vazifa: ${t.title}`,
+              `Vazifa: ${t.title}\n${t.instructions}`,
+              lintText,
               fence('tekshiriladigan_matn', text),
             ].join('\n\n'),
             { purpose: 'review', deliverableType: t.deliverable_type, taskTitle: t.title, attempt },
@@ -590,17 +637,29 @@ export class Orchestrator {
           this.emitState('uslubchi', 'idle', undefined, t.id);
         }
       });
-      this.save(`reviews/${t.id}-${attempt}.json`, JSON.stringify({ ...review, unreviewed }, null, 2));
+      // Format muammolari bor bo'lsa, "approve" ham qayta ishlashga aylanadi va izohlar birlashtiriladi
+      let review = modelReview;
+      if (lint.length) {
+        const seen = new Set(lint.map((i) => i.problem));
+        review = {
+          verdict: modelReview.verdict === 'reject' ? 'reject' : 'revise',
+          score: Math.min(modelReview.score || 6, 6),
+          issues: [...lint, ...modelReview.issues.filter((i) => i.problem && !seen.has(i.problem))],
+        };
+      }
+      this.save(`reviews/${t.id}-${attempt}.json`, JSON.stringify({ ...review, unreviewed, lint: lint.length }, null, 2));
+      this.recordReview(t.id, attempt, review, unreviewed, lint.length);
 
       const approved = review.verdict === 'approve';
-      const exhausted = !approved && (unreviewed || attempt >= maxRev);
+      // Uslubchi javobi o'qilmagan bo'lsa va format muammosi yo'q bo'lsa, ogohlantirish bilan qabul; muammo bo'lsa qayta ishlanadi
+      const exhausted = !approved && ((unreviewed && lint.length === 0) || attempt >= maxRev);
       const accepted = approved || exhausted;
       this.bus.emit({
         type: 'review_result',
         agent: 'uslubchi',
         to: t.assignee,
         task_id: t.id,
-        text: unreviewed
+        text: unreviewed && accepted
           ? "Tekshiruv o'qilmadi: ogohlantirish bilan qabul"
           : approved
             ? `Qabul: ${review.score}/10`

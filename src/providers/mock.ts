@@ -1,3 +1,4 @@
+import { expectedCountFor } from '../core/lint';
 import { RateLimitError, type CompleteRequest, type CompleteResult, type Provider } from './types';
 
 export interface MockOptions {
@@ -42,9 +43,8 @@ Mavzuni o'zlashtirish uchun nazariy bilimni amaliy misollar bilan mustahkamlash 
 `;
 }
 
-function test(t: string): string {
-  const q = (n: number) => `### ${n}-savol
-"${t}" mavzusiga oid ${n}-namunaviy savol?
+function test(t: string, count = 5): string {
+  const q = (n: number) => `### ${n}. "${t}" mavzusiga oid ${n}-namunaviy savol?
 
 - A) Birinchi variant
 - B) Ikkinchi variant
@@ -54,31 +54,27 @@ function test(t: string): string {
 **To'g'ri javob:** ${'ABCD'[n % 4]}
 **Izoh:** Bu namunaviy mock izoh.
 `;
-  return `# Test savollari: ${t}\n\n${[1, 2, 3, 4, 5].map(q).join('\n')}`;
+  return `# Test savollari: ${t}\n\n${Array.from({ length: count }, (_, i) => q(i + 1)).join('\n')}`;
 }
 
-function practice(t: string): string {
-  return `# Amaliy mashqlar: ${t}
-
-## 1-masala
-Mehmonxonada 40 ta xona bor, o'rtacha band bo'lish darajasi 65%. Bir kunda nechta xona band bo'ladi?
-
-**Yechim:** 40 × 0,65 = 26 ta xona.
-
-## 2-masala
-Turistik xizmat narxi 120 birlik, o'zgaruvchan xarajat 70 birlik. Bir birlikdagi marjinal foydani toping.
-
-**Yechim:** 120 − 70 = 50 birlik.
-
-## 3-masala
-"${t}" mavzusi bo'yicha qisqa keys tahlilini yozing (150 so'z).
-`;
+function practice(t: string, count = 3): string {
+  const items: [string, string, string][] = [
+    ["Mehmonxonada 40 ta xona bor, o'rtacha band bo'lish darajasi 65%. Bir kunda nechta xona band bo'ladi?", '40 × 0,65 = 26 ta xona.', '26 ta xona'],
+    ["Turistik xizmat narxi 120 birlik, o'zgaruvchan xarajat 70 birlik. Bir birlikdagi marjinal foydani toping.", '120 − 70 = 50 birlik.', '50 birlik'],
+    [`"${t}" mavzusi bo'yicha qisqa keys tahlilini yozing (150 so'z).`, 'Muammoni aniqlang, omillarni sanang, xulosa yozing.', 'Keys tahlili'],
+  ];
+  const one = (n: number) => {
+    const [cond, sol, ans] = items[(n - 1) % items.length]!;
+    return `## ${n}-masala\nShart: ${cond}\n\n**Yechim:** ${sol}\n**Javob:** ${ans}\n`;
+  };
+  return `# Amaliy mashqlar: ${t}\n\n${Array.from({ length: count }, (_, i) => one(i + 1)).join('\n')}`;
 }
 
-function slides(t: string): string {
+function slides(t: string, count = 5): string {
   const s = (n: number, title: string) =>
     `## Slayd ${n}: ${title}\n- Birinchi muhim band\n- Ikkinchi muhim band\n- Uchinchi muhim band\n`;
-  return `# Slaydlar: ${t}\n\n${s(1, 'Mavzu va maqsad')}\n${s(2, 'Asosiy tushunchalar')}\n${s(3, 'Misollar')}\n${s(4, 'Amaliy qo\'llanish')}\n${s(5, 'Xulosa')}`;
+  const titles = ['Mavzu va maqsad', 'Asosiy tushunchalar', 'Misollar', "Amaliy qo'llanish", 'Xulosa'];
+  return `# Slaydlar: ${t}\n\n${Array.from({ length: count }, (_, i) => s(i + 1, titles[i] ?? `Qo'shimcha ${i + 1}`)).join('\n')}`;
 }
 
 function glossary(t: string): string {
@@ -94,7 +90,7 @@ function glossary(t: string): string {
 `;
 }
 
-const WRITERS: Record<string, (t: string) => string> = { lecture, test, practice, slides, glossary };
+const WRITERS: Record<string, (t: string, count?: number) => string> = { lecture, test, practice, slides, glossary };
 
 export class MockProvider implements Provider {
   private static calls = 0;
@@ -161,7 +157,9 @@ export class MockProvider implements Provider {
         await this.delay(1400, 3200, seed);
         const write = WRITERS[meta.deliverableType ?? 'lecture'] ?? lecture;
         const revised = (meta.attempt ?? 0) > 0 ? '\n\n> Uslubchi izohlari hisobga olindi (qayta ishlangan variant).\n' : '';
-        text = write(topic) + revised;
+        const type = meta.deliverableType ?? 'lecture';
+        const count = expectedCountFor(type, req.messages[0]?.content ?? '');
+        text = write(topic, count) + revised;
         break;
       }
       case 'review': {

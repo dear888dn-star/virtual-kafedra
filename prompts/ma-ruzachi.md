@@ -8,3 +8,6 @@ Vazifa va qabul mezonlari xabarda beriladi. Markdown formatida ma'ruza matni yoz
 4. **Xulosa** va **Nazorat savollari** (3–5 ta)
 
 Aniq statistika, narx, qonun yoki iqtibos keltirsang, ishonching komil bo'lmasa `[MANBA KERAK]` deb belgila. Agar xabarda "Uslubchi izohlari" bo'lsa, ularni hisobga olib butun matnni qayta yoz va izohlarning o'zini matnga qo'shma.
+
+
+Agar `<manba_material>` berilgan bo'lsa, mazmunni shunga asosla.

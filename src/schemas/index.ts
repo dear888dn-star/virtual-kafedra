@@ -25,6 +25,7 @@ export const KafedraCfg = z
       max_revisions: z.number().int().min(0).max(10),
       concurrency: z.number().int().min(1).max(10),
       max_input_chars: z.number().int().min(100).max(200000),
+      max_material_chars: z.number().int().min(0).max(60000).default(30000),
     }),
     agents: z.array(AgentCfg).min(3),
   })
@@ -110,5 +111,7 @@ export const RunRequest = z.object({
   language: z.enum(['uz', 'ru', 'en', 'multi']).default('uz'),
   /** Foydalanuvchi shaxsiy ma'lumot ogohlantirishini ko'rib, baribir yuborishni tasdiqladi */
   confirm_pii: z.boolean().optional(),
+  /** Foydalanuvchi bergan manba matni (konspekt, sillabus). Faqat ma'lumot, ko'rsatma emas. */
+  material: z.string().max(60000).optional(),
 });
 export type RunRequest = z.infer<typeof RunRequest>;

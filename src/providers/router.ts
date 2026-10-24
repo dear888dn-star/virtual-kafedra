@@ -196,7 +196,10 @@ export class Router {
       let avail = s.limiter.check(estTokens(req));
       if (!avail.ok) {
         const why = { rpm: "daqiqalik limit", tpm: 'token limiti', rpd: 'kunlik limit', cooldown: 'sovish' }[avail.reason];
-        if (avail.waitMs <= this.maxWait && avail.reason !== 'rpd' && (!next || avail.waitMs <= 10_000)) {
+        // Bir nechta agent bir vaqtda kutayotgan bo'lishi mumkin: uyg'ongach boshqasi joyni egallagan bo'lsa, yana kutamiz
+        for (let spins = 0; spins < 8 && !avail.ok; spins++) {
+          const reason = avail.reason;
+          if (reason === 'rpd' || avail.waitMs > this.maxWait || (next && avail.waitMs > 10_000)) break;
           this.emitWait(ctx, s, avail.waitMs, why);
           await this.o.sleep(Math.round(avail.waitMs * this.scale));
           this.resume(ctx);

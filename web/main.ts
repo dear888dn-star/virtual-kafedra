@@ -80,7 +80,7 @@ async function main(): Promise<void> {
       return null;
     }
   };
-  const submit = async (body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean }): Promise<SubmitResult> => {
+  const submit = async (body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string }): Promise<SubmitResult> => {
     try {
       const r = await fetch('/api/runs', {
         method: 'POST',

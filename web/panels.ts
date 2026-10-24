@@ -64,7 +64,7 @@ const PII_LABELS: Record<string, string> = {
 };
 
 export interface TaskApi {
-  submit(body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean }): Promise<SubmitResult>;
+  submit(body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string }): Promise<SubmitResult>;
   listRuns(): Promise<RunItem[]>;
   resume(id: string): Promise<string | null>;
 }
@@ -90,6 +90,10 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
   const sensInfo = h('div', { class: 'note', hidden: true });
   const piiBox = h('div', { class: 'note warn', hidden: true, role: 'alert' });
   const failNote = h('div', { class: 'note err', hidden: true, role: 'alert' });
+  const mat = h('textarea', { id: 'task-material', placeholder: "Konspekt, sillabus yoki mavzu bo'yicha manba matn. Model faktlarni shundan oladi.", style: 'min-height:90px' });
+  const matInfo = h('p', { class: 'muted' });
+  const matFile = h('input', { type: 'file', accept: '.txt,.md,.csv,text/plain,text/markdown', 'aria-label': 'Manba faylini tanlash' });
+  const matBox = h('details', { class: 'material' }, h('summary', {}, 'Manba material (ixtiyoriy)'), mat, h('div', { class: 'row' }, matFile, h('button', { class: 'btn small ghost', type: 'button', onclick: () => { mat.value = ''; matFile.value = ''; updateMat(); } }, 'Tozalash')), matInfo);
   let sampleIdx = 0;
 
   const el = h(
@@ -97,6 +101,7 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
     { class: 'panel' },
     h('label', { for: 'task-text' }, 'Topshiriq'),
     ta,
+    matBox,
     h('div', { class: 'row' }, h('div', {}, h('label', { for: 'task-lang' }, 'Til'), lang), h('label', { class: 'check', for: 'task-sensitive' }, sens, 'Maxfiy topshiriq')),
     warn,
     sensInfo,
@@ -140,6 +145,27 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
   ta.addEventListener('input', onInput);
   sens.addEventListener('change', onInput);
 
+  const MAT_LIMIT = 30000;
+  const updateMat = () => {
+    const n = mat.value.length;
+    const max = store.config?.limits.max_material_chars ?? MAT_LIMIT;
+    matInfo.textContent = n ? `${n} belgi${n > max ? ` (ruxsat etilgan ${max} dan ortiq: qisqartiring)` : ''}. Matn tashqi AI xizmatiga yuboriladi.` : ".txt yoki .md fayl yuklang yoki matnni shu yerga qo'ying.";
+    matInfo.className = n > max ? 'note err' : 'muted';
+  };
+  mat.addEventListener('input', updateMat);
+  matFile.addEventListener('change', async () => {
+    const f = matFile.files?.[0];
+    if (!f) return;
+    if (f.size > 400_000) {
+      matInfo.textContent = 'Fayl juda katta (400 KB gacha).';
+      return;
+    }
+    mat.value = await f.text();
+    matBox.open = true;
+    updateMat();
+  });
+  updateMat();
+
   const doSend = async () => {
     err.hidden = true;
     const text = ta.value.trim();
@@ -154,7 +180,7 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
     send.disabled = store.status === 'running';
   };
   const attempt = async (confirm: boolean) => {
-    const res = await submit({ task: ta.value.trim(), sensitive: sens.checked, language: lang.value, confirm_pii: confirm || undefined });
+    const res = await submit({ task: ta.value.trim(), sensitive: sens.checked, language: lang.value, confirm_pii: confirm || undefined, material: mat.value.trim() || undefined });
     if (res.ok) return;
     if (res.pii?.length) {
       piiBox.replaceChildren(
@@ -314,7 +340,8 @@ export function resultPanel(store: Store, fetchRun: () => Promise<RunSnapshot | 
   const copyBtn = h('button', { class: 'btn small ghost', type: 'button' }, 'Nusxalash');
   const dlBtn = h('button', { class: 'btn small ghost', type: 'button' }, 'Yuklab olish (.md)');
   const note = h('p', { class: 'muted' });
-  const el = h('section', { class: 'panel', hidden: true }, list, h('div', { class: 'row' }, copyBtn, dlBtn, docxBtn, viewBtn), note, doc);
+  const reviewBox = h('div', { class: 'reviews' });
+  const el = h('section', { class: 'panel', hidden: true }, list, h('div', { class: 'row' }, copyBtn, dlBtn, docxBtn, viewBtn), note, doc, reviewBox);
   let snap: RunSnapshot | null = null;
   let selected = 'final';
 
@@ -374,6 +401,23 @@ export function resultPanel(store: Store, fetchRun: () => Promise<RunSnapshot | 
       else if (raw) doc.textContent = current();
       else doc.replaceChildren(renderMarkdown(current()));
       copyBtn.disabled = dlBtn.disabled = docxBtn.disabled = !items.length;
+      const rs = selected === 'final' ? [] : (snap?.reviews[selected] ?? []).filter(Boolean);
+      const VERDICT: Record<string, string> = { approve: 'qabul', revise: 'qayta ishlash', reject: 'rad' };
+      reviewBox.replaceChildren(
+        ...(rs.length
+          ? [
+              h('h2', { style: 'margin-top:12px' }, 'Uslubchi izohlari'),
+              ...rs.map((r) =>
+                h(
+                  'div',
+                  { class: 'review' },
+                  h('div', {}, h('strong', {}, `${r.attempt + 1}-tekshiruv: ${VERDICT[r.verdict] ?? r.verdict}, ${r.score}/10`), r.lint ? ` · format muammolari: ${r.lint}` : '', r.unreviewed ? " · uslubchi javobi o'qilmadi" : ''),
+                  r.issues.length ? h('ul', {}, ...r.issues.map((i) => h('li', {}, `${i.place}: ${i.problem}${i.fix ? ` → ${i.fix}` : ''}`))) : h('div', { class: 'muted' }, "Izoh yo'q."),
+                ),
+              ),
+            ]
+          : []),
+      );
     },
   };
   panel.refresh = async () => {

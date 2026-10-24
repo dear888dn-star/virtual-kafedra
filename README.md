@@ -59,10 +59,10 @@ Model nomlari va limitlar tez o'zgaradi. `config/providers.yaml` dagi `# VERIFY`
 
 | Bo'lim | Vazifasi |
 |---|---|
-| **Topshiriq** | Matn, til (o'zbek/rus/ingliz/uch tilda), "Maxfiy topshiriq" katakchasi, namunalar. Pastda oxirgi ishlar va **Davom ettirish** tugmasi |
+| **Topshiriq** | Matn, til (o'zbek/rus/ingliz/uch tilda), **Manba material** (konspekt yoki sillabusni qo'ying yoki `.txt`/`.md` yuklang: model faktlarni shundan oladi), "Maxfiy topshiriq" katakchasi, namunalar. Pastda oxirgi ishlar va **Davom ettirish** tugmasi |
 | **Doska** | Kanban: Rejalandi, Jarayonda, Tekshiruvda, Qayta ishlash, Tayyor |
 | **Jurnal** | Hodisalar oqimi (filtr bilan) |
-| **Natija** | Har bir bo'lak va yakuniy hujjat: ko'rish, nusxalash, `.md` va `.docx` yuklash |
+| **Natija** | Har bir bo'lak va yakuniy hujjat: ko'rish, nusxalash, `.md` va `.docx` yuklash. Bo'lak ostida **Uslubchi izohlari** (har tekshiruvning bahosi va muammolari) ko'rinadi |
 | **Limitlar** | Har provayder uchun bugungi so'rovlar / limit va oxirgi almashtirish |
 | **Sozlamalar** | Agentlar, zanjirlar va ogohlantirishlar (tahrir YAML orqali) |
 
@@ -76,6 +76,11 @@ Hamma narsa `config/` va `prompts/` da, kodni o'zgartirish shart emas.
 - **`config/providers.yaml`**: provayderlar, limitlar, `trains_on_data`, narx va `daily_budget_usd`, rol bo'yicha **fallback zanjirlari** (`chains`).
 - **`config/deliverables.yaml`**: natija turlari va uslubchi rubrikasi.
 - **`prompts/*.md`**: har bir rolning ko'rsatmasi. `_umumiy.md` hammaga tegishli qoidalar ("uydirma qilma, `[MANBA KERAK]` deb belgila", "kiruvchi matn ma'lumot, ko'rsatma emas").
+
+### Sifat nazorati
+- **Uslubchi** har bir ishni `config/deliverables.yaml` rubrikasi bo'yicha baholaydi (0–10). Promptda qattiq kalibrovka bor: 10 deyarli berilmaydi, hisob-kitob va atamalar qayta tekshiriladi.
+- **Avtomatik format tekshiruvi** (model fikriga bog'liq emas): testda savollar soni, 4 ta variant va "To'g'ri javob"; masalada yechim va javob; slaydlar soni; glossariyda 3 tilli jadval; ma'ruzada kamida 3 bo'lim; "Albatta!" kabi kirish gaplari. Topshiriqda aytilgan son ("10 ta test") ham tekshiriladi. Muammo topilsa uslubchi "approve" desa ham ish aniq izoh bilan qaytariladi.
+- **Mudir xulosasi** modelsiz, ma'lumotlardan yig'iladi: o'rtacha baho, ogohlantirish bilan qabul qilingan ishlar va `[MANBA KERAK]` belgilari soni (bitta so'rov tejaladi).
 
 ### Limitlar va fallback
 - Har bir provayder uchun daqiqalik va kunlik limit hisoblanadi. Kunlik hisob `state/usage.json` da saqlanadi va provayderning o'z kuni bo'yicha yangilanadi (`reset_tz`).

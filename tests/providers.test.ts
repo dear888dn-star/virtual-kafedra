@@ -345,3 +345,12 @@ test('adapter: ikkinchi urinishda ham kesilgan bo\'lsa, bor matn qaytariladi; bu
   assert.equal((await mk('yarmi').complete({ ...REQ, model: 'm' })).text, 'yarmi');
   await assert.rejects(mk().complete({ ...REQ, model: 'm' }), (e: Error) => e instanceof TransientError && /bo'sh javob/.test(e.message));
 });
+
+test('limiter: bir vaqtda kutayotgan agentlar navbat bilan o\'tadi, hech biri tashlab ketmaydi', async () => {
+  const a = fake('a');
+  const { router, k } = setup([{ provider: a, models: { default: 'm' }, limits: { rpm: 2 } }]);
+  const results = await Promise.all([1, 2, 3, 4, 5].map(() => router.complete(REQ, CTX)));
+  assert.equal(results.length, 5);
+  assert.equal(a.calls, 5);
+  assert.ok(k.c.slept.length >= 2, 'kutish bo\'lishi kerak edi');
+});

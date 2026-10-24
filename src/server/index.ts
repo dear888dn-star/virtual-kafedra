@@ -42,7 +42,7 @@ server.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
 });
-server.use(express.json({ limit: '100kb' }));
+server.use(express.json({ limit: '400kb' }));
 
 server.get('/', (_req, res) => res.sendFile(join(webDir, 'index.html')));
 server.get('/style.css', (_req, res) => res.sendFile(join(webDir, 'style.css')));
@@ -83,7 +83,13 @@ server.post('/api/runs', (req, res) => {
     res.status(409).json({ error: 'Boshqa topshiriq bajarilmoqda' });
     return;
   }
-  const pii = detectPii(parsed.data.task);
+  const maxMat = app.cfg.kafedra.limits.max_material_chars;
+  if ((parsed.data.material?.length ?? 0) > maxMat) {
+    res.status(413).json({ error: `Manba material juda uzun (maksimum ${maxMat} belgi)` });
+    return;
+  }
+  const pii = detectPii(`${parsed.data.task}
+${parsed.data.material ?? ''}`);
   if (pii.length && !parsed.data.confirm_pii) {
     res.status(409).json({ code: 'pii', error: "Matnda shaxsiy ma'lumot bo'lishi mumkin", findings: pii });
     return;

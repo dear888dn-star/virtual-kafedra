@@ -43,12 +43,30 @@ function realistic(script: Script = {}) {
       } else {
         const title = /Vazifa: (.+)/.exec(msg)?.[1] ?? '';
         log.work.push({ title, msg });
-        text = `# ${title}\n\nMatn (${log.work.length}).`;
+        text = fakeWork(title, log.work.length);
       }
       return { text, usage: { inputTokens: 10, outputTokens: 10 }, provider: 'fake', model: 'm' };
     },
   };
   return { provider, log };
+}
+
+/** Lint talablariga mos, turga qarab tuzilgan matn (Ish-T1 ma'ruza, T2 test, T3 mashq, T4 slayd, T5 glossariy). */
+function fakeWork(title: string, n: number): string {
+  const id = /T(\d)/.exec(title)?.[1] ?? '1';
+  const body = `Bu ${n}-urinish matni, mavzu bo'yicha yetarlicha uzun tushuntirish va misollar bilan.`;
+  switch (id) {
+    case '2':
+      return [1, 2, 3].map((i) => `### ${i}. Savol ${i}?\n- A) bir\n- B) ikki\n- C) uch\n- D) to'rt\n\n**To'g'ri javob:** B\n**Izoh:** ${body}\n`).join('\n');
+    case '3':
+      return [1, 2].map((i) => `## ${i}-masala\nShart: ${body}\n\n**Yechim:** hisob\n**Javob:** ${i}\n`).join('\n');
+    case '4':
+      return [1, 2, 3].map((i) => `## Slayd ${i}: Sarlavha\n- ${body}\n- band\n- band\n`).join('\n');
+    case '5':
+      return `# Glossariy\n\n| O'zbekcha | Русский | English |\n|---|---|---|\n${['a', 'b', 'c', 'd', 'e'].map((x) => `| ${x} | ${x} | ${x} |`).join('\n')}\n`;
+    default:
+      return `# Ma'ruza ${title}\n\n## Kirish\n${body}\n\n## Asosiy qism\n${body}\n\n## Xulosa\n${body}\n`;
+  }
 }
 
 function defaultPlan(assignee5 = 't5'): string {

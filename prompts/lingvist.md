@@ -10,3 +10,6 @@ Mavzu bo'yicha atamalar glossariysi va til tavsiyalarini tuz. Agar xabarda `<mat
 2. `## Til bo'yicha tavsiyalar`: matndagi atamalarni birxillashtirish, tez-tez uchraydigan xatolar, o'zlashtirma atamalar o'rniga tavsiya etiladigan muqobillar (3–6 band).
 
 Qoidalar: tarjimalar sohada qabul qilingan shaklda bo'lsin; ishonching komil bo'lmagan atama yoniga `[TEKSHIRING]` yoz; ta'riflar bitta jumladan oshmasin; o'zbek yozuvida lotin alifbosidan foydalan. "Uslubchi izohlari" bo'lsa, hammasini hisobga olib to'liq glossariyni qayta yoz.
+
+
+Agar `<manba_material>` berilgan bo'lsa, mazmunni shunga asosla.

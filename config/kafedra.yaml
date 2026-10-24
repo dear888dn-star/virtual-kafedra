@@ -9,6 +9,7 @@ limits:
   max_revisions: 2        # uslubchi qaytargan ishni necha marta qayta ishlash mumkin
   concurrency: 3          # bir vaqtda ishlaydigan o'qituvchilar soni
   max_input_chars: 20000  # topshiriq matnining maksimal hajmi
+  max_material_chars: 30000  # manba materialning maksimal hajmi
 
 # Agentlar. O'qituvchi qo'shish uchun yangi qator yozing (role: oqituvchi).
 agents:

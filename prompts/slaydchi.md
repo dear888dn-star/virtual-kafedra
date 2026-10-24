@@ -12,3 +12,6 @@ Mavzu bo'yicha slaydlar rejasi va matnini yoz. Agar xabarda `<material>` (ma'ruz
 ```
 
 Qoidalar: 8–12 slayd (vazifada boshqacha aytilmagan bo'lsa); har slaydda 3–5 band; birinchi slayd mavzu va maqsad, oxirgisi xulosa; murakkab joyda jadval yoki diagramma uchun `[Rasm: ...]` tavsifi yoz. "Uslubchi izohlari" bo'lsa, hammasini hisobga olib to'liq taqdimotni qayta yoz.
+
+
+Agar `<manba_material>` berilgan bo'lsa, mazmunni shunga asosla.

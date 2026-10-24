@@ -63,7 +63,7 @@ export interface ProviderInfo {
 
 export interface PublicConfig {
   kafedra: { name: string; audience: string; languages: string[]; default_language: string };
-  limits: { max_revisions: number; concurrency: number; max_input_chars: number };
+  limits: { max_revisions: number; concurrency: number; max_input_chars: number; max_material_chars: number };
   agents: AgentInfo[];
   providers: ProviderInfo[];
   chains: Record<string, string[]>;
@@ -81,6 +81,17 @@ export interface PlanTaskInfo {
   acceptance_criteria: string[];
 }
 
+export interface ReviewInfo {
+  attempt: number;
+  verdict: 'approve' | 'revise' | 'reject';
+  score: number;
+  issues: { place: string; problem: string; fix: string }[];
+  /** Uslubchi javobi o'qilmadi */
+  unreviewed: boolean;
+  /** Avtomatik format tekshiruvi topgan muammolar soni */
+  lint: number;
+}
+
 export interface RunSnapshot {
   runId: string | null;
   status: 'idle' | 'running' | 'finished' | 'failed';
@@ -88,4 +99,5 @@ export interface RunSnapshot {
   plan: PlanTaskInfo[];
   deliverables: Record<string, string>;
   final: string | null;
+  reviews: Record<string, ReviewInfo[]>;
 }

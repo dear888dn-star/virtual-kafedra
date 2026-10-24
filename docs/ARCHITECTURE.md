@@ -25,6 +25,9 @@ topshiriq -> [maxfiylik/PII tekshiruvi] -> MUDIR.plan (zod + validatePlan)
 
 - **Reja**: mudir JSON qaytaradi; `extractJson` va zod tekshiradi, `validatePlan` o'qituvchi id, natija turi, bog'liqlik va tsiklni tekshiradi. Yaroqsiz bo'lsa xato matni bilan bir marta tuzatish so'raladi.
 - **Bajarish**: bir agent bir vaqtda bitta ish bajaradi (`withAgent`). Bog'liq vazifa oldingi natijani `<material>` ichida oladi (8000 belgigacha).
+- **Format tekshiruvi** (`src/core/lint.ts`): har natijadan keyin ob'ektiv tekshiruv (sonlar, tuzilma). Natija uslubchiga beriladi, muammo bo'lsa `approve` ham `revise` ga aylanadi va izohlar birlashtiriladi.
+- **Manba material**: foydalanuvchi matni `<manba_material>` ichida (rejaga 1500, o'qituvchiga 10000 belgigacha) beriladi.
+- **Xulosa**: `buildSummary` modelsiz yig'iladi.
 - **Tekshiruv**: uslubchi rubrika bo'yicha `approve | revise | reject` va `issues[]` qaytaradi. Qayta ishlash limiti tugasa mudir hakam sifatida ogohlantirish bilan qabul qiladi. Uslubchi javobi o'qilmasa ham ish to'xtamaydi (ogohlantirish bilan qabul).
 - **Holat**: har bosqichdan keyin `runs/<id>/state.json` yoziladi; `resume` shundan davom ettiradi.
 

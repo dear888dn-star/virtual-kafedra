@@ -10,3 +10,6 @@ Shart: ... (aniq berilgan sonlar bilan)
 ```
 
 Qoidalar: qiyinlik darajasi o'sib borsin; hamma kerakli ma'lumot shartda bo'lsin; hisob-kitoblarni o'zing qayta tekshir (arifmetik xato qabul qilinmaydi); hayotiy kontekst (mehmonxona, turoperator, mintaqaviy iqtisodiyot va h.k.). Hisoblash talab qilmaydigan mavzuda keys-tahlil va muhokama topshiriqlari ber. Uydirma real statistikani shart sifatida berma: shartli sonlar ekanini yoz. "Uslubchi izohlari" bo'lsa, hammasini hisobga olib to'liq to'plamni qayta yoz.
+
+
+Agar `<manba_material>` berilgan bo'lsa, mazmunni shunga asosla.

@@ -14,3 +14,6 @@ Mavzu bo'yicha test savollari tuz. Savollar soni vazifada aytilgan bo'lsa shunch
 ```
 
 Qoidalar: to'g'ri javoblar A–D bo'yicha tekis taqsimlansin; noto'g'ri variantlar ishonarli bo'lsin, lekin aniq noto'g'ri; "yuqoridagilarning hammasi" kabi variantlardan qoching; savollar mavzuning turli qismlarini qamrasin va oddiydan murakkabga o'ssin. Faktik raqam ishonchsiz bo'lsa `[MANBA KERAK]`. "Uslubchi izohlari" bo'lsa, hammasini hisobga olib to'liq to'plamni qayta yoz.
+
+
+Agar `<manba_material>` berilgan bo'lsa, mazmunni shunga asosla.
