@@ -54,3 +54,9 @@ Yangilangan: 2026-10-24 (2-bosqich)
 - `gemini-3.5-flash` aslida `gemini-3.6-flash` kvotasiga yozilgan (alias).
 - Har bir model alohida kvotaga ega, shuning uchun `providers.yaml` da bir kalit bilan 4 ta Gemini yozuvi (`gemini`, `gemini-lite`, `gemini-lite2`, `gemini-preview`) zanjirda ketma-ket turadi. Boshqalarining kvotasi 20 deb taxmin qilingan (tasdiqlanmagan).
 - Kunlik kvota tugaganini tizim 429 javobidan aniqlaydi, hisobni `state/usage.json` ga yozadi (qayta ishga tushganda ham eslab qoladi) va qayta urinmasdan keyingi modelga o'tadi.
+
+## Taqdimot va tashqi xizmatlar (2026-10-25)
+- **Prezi:** rasmiy hujjatlarda "taqdimot yaratish" API'si topilmadi (qidiruvda faqat uchinchi tomon katalogidagi nomuvofiq yozuvlar chiqdi), shuning uchun Prezi'ga to'g'ridan-to'g'ri yozilmaydi. Prezi PPTX/PPT/PDF/DOCX faylni **import** qiladi (support.prezi.com, prezi.com/blog). Natija sifatida `.pptx` yasaladi.
+- **NotebookLM:** faqat NotebookLM Enterprise API (Google Cloud, alpha, 2025-09 dan) ochiq; iste'molchi/Gemini API orqali yo'q. Notebooklm-py va shunga o'xshash loyihalar hujjatlanmagan ichki endpointlardan foydalanadi, shuning uchun ishlatilmadi. Manba asosidagi ish `<manba_material>` bilan bajariladi.
+- **.pptx kutubxonasi:** `pptxgenjs` 4.0.1 (MIT). Fayl tuzilishi (zip, slaydlar soni, izohlar, jadval) testlar bilan tekshirilgan; PowerPoint/LibreOffice'da vizual ochib tekshirilmagan (kompyuterda o'rnatilmagan). Brauzerdagi ko'rinish bir xil maket mantig'ida chiziladi, lekin piksel-aniq nusxa emas.
+- **Rasmlar:** Gemini rasm modellari (kvotasi va bepul tarifdagi ruxsati tekshirilmagan) hozircha ishlatilmaydi.

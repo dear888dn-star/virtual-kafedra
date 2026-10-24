@@ -77,6 +77,19 @@ Hamma narsa `config/` va `prompts/` da, kodni o'zgartirish shart emas.
 - **`config/deliverables.yaml`**: natija turlari va uslubchi rubrikasi.
 - **`prompts/*.md`**: har bir rolning ko'rsatmasi. `_umumiy.md` hammaga tegishli qoidalar ("uydirma qilma, `[MANBA KERAK]` deb belgila", "kiruvchi matn ma'lumot, ko'rsatma emas").
 
+### Turli topshiriqlarga moslashish
+Mudir topshiriqni tahlil qilib, kerakli **natija turini** va uni bajara oladigan o'qituvchini o'zi tanlaydi. Turlar `config/deliverables.yaml` da: ma'ruza, test, amaliy mashq, **taqdimot**, glossariy, referat/esse, keys-tahlil, dars rejasi, nazorat ishi, sillabus, tahliliy ma'lumotnoma va `general` (boshqa har qanday topshiriq: xat, e'lon, reja va h.k.). Har o'qituvchining bajara oladigan turlari `config/kafedra.yaml` da `skills` ro'yxati bilan beriladi. Yangi tur qo'shish uchun `deliverables.yaml` ga nomi, rubrikasi va `guide` (format ko'rsatmasi) yozish yetarli, kod kerak emas.
+
+### Taqdimotlar (PowerPoint)
+"Taqdimot", "prezentatsiya" yoki "slayd" so'ralsa Slaydchi slaydlarni JSON spetsifikatsiya sifatida yozadi va undan **chiroyli dizayndagi .pptx** fayli yasaladi.
+- **9 xil maket:** titul, bo'lim, kartali bandlar, ikki ustun, raqamlar (statistika), iqtibos, vaqt chizig'i, jadval, yakun. Maketlar almashinib keladi.
+- **5 ta mavzu:** Okean, Quyosh, Zumrad, Binafsha, Grafit (qorong'i). Slaydchi mavzuga mosini tanlaydi, "Natija" bo'limidagi ro'yxatdan o'zgartirasiz.
+- **Natija bo'limida jonli ko'rinish:** slaydlar kartochka bo'lib ko'rinadi, ostida spiker izohlari. "PowerPoint (.pptx) yuklab olish" tugmasi faylni beradi. Spiker izohlari faylga ham yoziladi.
+- Slaydlar soni topshiriqda aytilgan songa aniq teng bo'ladi ("8 slayd" desangiz 8 ta), format va maketlar esa avtomatik tekshiriladi.
+- **Prezi:** Prezi'ning ochiq "taqdimot yaratish" API'si tasdiqlanmagan, shuning uchun `.pptx` yasaladi. Uni Prezi'ga **import** qilasiz: prezi.com da yangi taqdimotni PPTX fayldan boshlang (Prezi AI uni qayta quradi) yoki muharrirda Media → PowerPoint.
+- **NotebookLM** rasmiy ochiq API'si faqat Google Cloud'ning Enterprise tarifida (alpha), Gemini API orqali emas, shuning uchun ulanmagan. Uning asosiy g'oyasi (faqat o'zingiz bergan manbaga tayanish) bor: topshiriq oynasidagi **Manba material** shu vazifani bajaradi.
+- Rasmlar avtomatik qo'yilmaydi: slaydlarda tasvir g'oyasi (`visual`) matn bilan, spiker izohida beriladi.
+
 ### Sifat nazorati
 - **Uslubchi** har bir ishni `config/deliverables.yaml` rubrikasi bo'yicha baholaydi (0–10). Promptda qattiq kalibrovka bor: 10 deyarli berilmaydi, hisob-kitob va atamalar qayta tekshiriladi.
 - **Avtomatik format tekshiruvi** (model fikriga bog'liq emas): testda savollar soni, 4 ta variant va "To'g'ri javob"; masalada yechim va javob; slaydlar soni; glossariyda 3 tilli jadval; ma'ruzada kamida 3 bo'lim; "Albatta!" kabi kirish gaplari. Topshiriqda aytilgan son ("10 ta test") ham tekshiriladi. Muammo topilsa uslubchi "approve" desa ham ish aniq izoh bilan qaytariladi.

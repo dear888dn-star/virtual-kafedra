@@ -22,11 +22,11 @@ providers:
     kind: gemini
     api_key_env: GEMINI_API_KEY
     enabled: true
-    trains_on_data: true     # bepul tarifda kontent mahsulotlarni yaxshilash uchun ishlatilishi mumkin (shartlarni tekshiring) # VERIFY
-    base_url: https://generativelanguage.googleapis.com/v1beta/openai   # rasmiy hujjat, 2026-10-24
-    reset_tz: America/Los_Angeles   # hujjat: kunlik kvota Tinch okean vaqti yarim tunida nolga tushadi
-    json_mode: none                 # json_object hujjatda aniq yozilmagan # VERIFY
-    reasoning_effort: low           # hujjat: minimal/low/medium/high; 3.8-flash 'minimal' ni rad etadi, 'low' ishlaydi
+    trains_on_data: true # bepul tarifda kontent mahsulotlarni yaxshilash uchun ishlatilishi mumkin (shartlarni tekshiring) # VERIFY
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai # rasmiy hujjat, 2026-10-24
+    reset_tz: America/Los_Angeles # hujjat: kunlik kvota Tinch okean vaqti yarim tunida nolga tushadi
+    json_mode: none # json_object hujjatda aniq yozilmagan # VERIFY
+    reasoning_effort: low # hujjat: minimal/low/medium/high; 3.8-flash 'minimal' ni rad etadi, 'low' ishlaydi
     models:
       # Sinov (2026-10-24, bepul kalit): 3.1-flash-lite ~2s, 3.5-flash ~5s, 3.7/3.8-flash ~53s (juda sekin)
       default: gemini-3.5-flash
@@ -44,7 +44,7 @@ providers:
     reset_tz: America/Los_Angeles
     json_mode: none
     reasoning_effort: low
-    models: { default: gemini-3.1-flash-lite }   # sinovda ~2 s
+    models: { default: gemini-3.1-flash-lite } # sinovda ~2 s
     limits: { rpm: 5, rpd: 20 }
   - id: gemini-lite2
     kind: gemini
@@ -55,7 +55,7 @@ providers:
     reset_tz: America/Los_Angeles
     json_mode: none
     reasoning_effort: low
-    models: { default: gemini-3.5-flash-lite }   # sinovda ~3 s
+    models: { default: gemini-3.5-flash-lite } # sinovda ~3 s
     limits: { rpm: 5, rpd: 20 }
   - id: gemini-preview
     kind: gemini
@@ -66,15 +66,15 @@ providers:
     reset_tz: America/Los_Angeles
     json_mode: none
     reasoning_effort: low
-    models: { default: gemini-3-flash-preview }   # preview: o'zgarishi mumkin
+    models: { default: gemini-3-flash-preview } # preview: o'zgarishi mumkin
     limits: { rpm: 5, rpd: 20 }
   - id: groq
     kind: openai_compat
     api_key_env: GROQ_API_KEY
     enabled: true
-    trains_on_data: unknown  # VERIFY: maxfiy ishlar uchun yaroqsiz hisoblanadi
-    base_url: https://api.groq.com/openai/v1   # rasmiy hujjat, 2026-10-24
-    json_mode: none          # # VERIFY
+    trains_on_data: unknown # VERIFY: maxfiy ishlar uchun yaroqsiz hisoblanadi
+    base_url: https://api.groq.com/openai/v1 # rasmiy hujjat, 2026-10-24
+    json_mode: none # # VERIFY
     models:
       # Sinov (2026-10-24, sizning kalitingiz): gpt-oss-120b ~1.8 s, qwen3.8-27b ~0.8 s, gpt-oss-20b ~0.8 s; o'zbekcha yaxshi
       default: openai/gpt-oss-120b
@@ -84,64 +84,96 @@ providers:
     kind: openai_compat
     api_key_env: CEREBRAS_API_KEY
     enabled: false
-    trains_on_data: unknown  # VERIFY
-    base_url: https://api.cerebras.ai/v1   # rasmiy hujjat, 2026-10-24
-    json_mode: none          # hujjat json_schema (Structured Outputs) tavsiya qiladi # VERIFY
+    trains_on_data: unknown # VERIFY
+    base_url: https://api.cerebras.ai/v1 # rasmiy hujjat, 2026-10-24
+    json_mode: none # hujjat json_schema (Structured Outputs) tavsiya qiladi # VERIFY
     models:
-      default: gpt-oss-120b  # Free Trial jadvalida bor # VERIFY
-    limits: { rpm: 5, tpm: 30000 }   # Free Trial: 5 RPM, 30K uncached TPM, 1M TPD; RPD yo'q # VERIFY
+      default: gpt-oss-120b # Free Trial jadvalida bor # VERIFY
+    limits: { rpm: 5, tpm: 30000 } # Free Trial: 5 RPM, 30K uncached TPM, 1M TPD; RPD yo'q # VERIFY
   - id: openrouter
     kind: openai_compat
     api_key_env: OPENROUTER_API_KEY
     enabled: false
-    trains_on_data: unknown  # VERIFY (modelga qarab farq qiladi)
-    base_url: https://openrouter.ai/api/v1   # rasmiy hujjat, 2026-10-24
-    json_mode: none          # # VERIFY
+    trains_on_data: unknown # VERIFY (modelga qarab farq qiladi)
+    base_url: https://openrouter.ai/api/v1 # rasmiy hujjat, 2026-10-24
+    json_mode: none # # VERIFY
     # 2026-10-24: kalit /models da ishlaydi, lekin chatda 401 "User not found" (kalit yoki hisob muammosi). Yangi kalit oling.
     # Tayyor bo'lgach model tanlang, masalan google/gemma-4-31b-it:free (ro'yxatda bor) va enabled: true qiling.
-    models: {}               # ":free" bilan tugaydigan model nomi # VERIFY
-    limits: { rpm: 20, rpd: 50 }   # ":free" modellar, <10 kredit sotib olinganda; >=10 kreditda rpd 1000 # hujjat 2026-10-24
+    models: {} # ":free" bilan tugaydigan model nomi # VERIFY
+    limits: { rpm: 20, rpd: 50 } # ":free" modellar, <10 kredit sotib olinganda; >=10 kreditda rpd 1000 # hujjat 2026-10-24
   - id: mistral
     kind: openai_compat
     api_key_env: MISTRAL_API_KEY
     enabled: true
-    trains_on_data: unknown  # VERIFY: bepul tarifda ma'lumot o'qitishga ishlatilishi mumkin; maxfiy ishlar uchun yaroqsiz
-    base_url: https://api.mistral.ai/v1   # endpoint: /v1/chat/completions (hujjat)
-    json_mode: json_object   # hujjatda tasdiqlangan; 2026-10-24 sinovda ishladi
+    trains_on_data: unknown # VERIFY: bepul tarifda ma'lumot o'qitishga ishlatilishi mumkin; maxfiy ishlar uchun yaroqsiz
+    base_url: https://api.mistral.ai/v1 # endpoint: /v1/chat/completions (hujjat)
+    json_mode: json_object # hujjatda tasdiqlangan; 2026-10-24 sinovda ishladi
     # Sizning bepul hisobingiz (Admin > Limits, 2026-10-24): faqat ministral oilasi ochiq.
     # mistral-small/medium/*-latest: 429 (0 so'rov/daqiqa), mistral-large: 403 "obuna darajasida yo'q".
     # ministral-14b ~1.2 s, o'zbekcha eng yaxshisi; 8b: 188 so'rov/daq; 3b: 750 so'rov/daq, lekin o'zbekchasi zaif.
     models:
       default: ministral-14b-2512
-    limits: { rpm: 30, tpm: 900000 }   # javob sarlavhalaridan: 30 so'rov/daq, 937500 token/daq (14b). Oylik chegara noma'lum # VERIFY
+    limits: { rpm: 30, tpm: 900000 } # javob sarlavhalaridan: 30 so'rov/daq, 937500 token/daq (14b). Oylik chegara noma'lum # VERIFY
   - id: deepseek
     kind: openai_compat
     api_key_env: DEEPSEEK_API_KEY
-    enabled: false           # pullik: daily_budget_usd belgilangach yoqing
-    trains_on_data: unknown  # VERIFY
+    enabled: false # pullik: daily_budget_usd belgilangach yoqing
+    trains_on_data: unknown # VERIFY
     daily_budget_usd: 0.5
-    base_url: https://api.deepseek.com   # rasmiy hujjat, 2026-10-24
-    json_mode: none          # # VERIFY
+    base_url: https://api.deepseek.com # rasmiy hujjat, 2026-10-24
+    json_mode: none # # VERIFY
     models:
-      default: deepseek-flash   # hujjat: "Use deepseek-flash as the model name"
+      default: deepseek-flash # hujjat: "Use deepseek-flash as the model name"
     # narx USD/1M token: input cache-miss, output; eng qimmat (peak) narx olingan # VERIFY
     price: { input_per_mtok: 0.3, output_per_mtok: 1.2 }
-    limits: {}               # hujjatda qat'iy limit yo'q (alohida sahifada)
+    limits: {} # hujjatda qat'iy limit yo'q (alohida sahifada)
   - id: ollama
     kind: ollama
-    enabled: false           # mahalliy model: kalit kerak emas, maxfiy ishlar uchun ruxsat
-    trains_on_data: false    # ma'lumot kompyuteringizdan chiqmaydi
-    base_url: http://localhost:11434/v1   # rasmiy hujjat, 2026-10-24
-    json_mode: json_object   # hujjatda tasdiqlangan
+    enabled: false # mahalliy model: kalit kerak emas, maxfiy ishlar uchun ruxsat
+    trains_on_data: false # ma'lumot kompyuteringizdan chiqmaydi
+    base_url: http://localhost:11434/v1 # rasmiy hujjat, 2026-10-24
+    json_mode: json_object # hujjatda tasdiqlangan
     timeout_ms: 180000
-    models: {}               # `ollama list` dagi o'rnatilgan model nomi
+    models: {} # `ollama list` dagi o'rnatilgan model nomi
     limits: {}
 
 # Rol bo'yicha fallback zanjiri (chapdan o'ngga). Yoqilmagan yoki kalitsiz provayderlar o'tkazib yuboriladi.
 chains:
   # O'qituvchilar Groq'da yozadi, mudir va uslubchi avval Gemini'da ishlaydi: boshqa model tekshirgani sifatni oshiradi.
-  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, mistral, deepseek, openrouter, ollama]
-  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, mistral, openrouter, ollama]
-  oqituvchi: [groq, cerebras, gemini, gemini-lite, gemini-lite2, gemini-preview, mistral, openrouter, ollama]
+  mudir:
+    [
+      gemini,
+      gemini-lite,
+      gemini-lite2,
+      gemini-preview,
+      groq,
+      mistral,
+      deepseek,
+      openrouter,
+      ollama
+    ]
+  uslubchi:
+    [
+      gemini,
+      gemini-lite,
+      gemini-lite2,
+      gemini-preview,
+      groq,
+      mistral,
+      openrouter,
+      ollama
+    ]
+  oqituvchi:
+    [
+      groq,
+      cerebras,
+      gemini,
+      gemini-lite,
+      gemini-lite2,
+      gemini-preview,
+      mistral,
+      openrouter,
+      ollama
+    ]
 
-mock_chain: [mock, mock-b]
+mock_chain: [ mock, mock-b ]

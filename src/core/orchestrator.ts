@@ -5,7 +5,9 @@ import type { Router } from '../providers/router';
 import { BudgetExceededError, LimitExhaustedError, SensitiveRoutingError, type CallMeta } from '../providers/types';
 import { Plan, Review, RunRequest, type PlanTask } from '../schemas';
 import type { AgentState, PlanTaskInfo, ReviewInfo, RunSnapshot } from '../shared/events';
-import type { AppConfig } from './config';
+import { SlideDeckSchema } from '../schemas/slides';
+import { deckToMarkdown, type SlideDeck } from '../shared/slides';
+import { skillsOf, type AppConfig } from './config';
 import { expectedCountFor, lintDeliverable } from './lint';
 import type { EventBus } from './events';
 
@@ -287,7 +289,7 @@ export class Orchestrator {
       {
         system: this.system(agentId, req),
         messages: [{ role: 'user', content: userContent }],
-        json: meta.purpose === 'plan' || meta.purpose === 'review',
+        json: meta.purpose === 'plan' || meta.purpose === 'review' || meta.deliverableType === 'slides',
         maxTokens: MAX_TOKENS[meta.purpose],
         temperature: meta.purpose === 'work' ? 0.7 : 0.2,
         meta: { ...meta, agentId },
@@ -355,6 +357,13 @@ export class Orchestrator {
       if (!types.has(t.deliverable_type)) {
         throw new Error(`Vazifa ${t.id}: noma'lum deliverable_type "${t.deliverable_type}" (mumkin: ${[...types].join(', ')})`);
       }
+      if (!skillsOf(a).has(t.deliverable_type)) {
+        const able = this.cfg.kafedra.agents
+          .filter((x) => x.role === 'oqituvchi' && skillsOf(x).has(t.deliverable_type))
+          .map((x) => x.id)
+          .join(', ');
+        throw new Error(`Vazifa ${t.id}: "${t.assignee}" "${t.deliverable_type}" turini bajara olmaydi. Bu turni bajara oladiganlar: ${able || "yo'q (general turini ishlating)"}`);
+      }
       for (const d of t.depends_on) {
         if (!ids.has(d)) throw new Error(`Vazifa ${t.id}: noma'lum bog'liqlik "${d}"`);
         if (d === t.id) throw new Error(`Vazifa ${t.id} o'ziga bog'liq`);
@@ -382,6 +391,7 @@ export class Orchestrator {
       id: a.id,
       title: a.title,
       deliverable_type: a.deliverable_type ?? 'lecture',
+      skills: [...skillsOf(a)].filter((s) => s !== 'general'),
     }));
 
     // 1) Reja (davom ettirishda saqlangan reja o'qiladi)
@@ -391,7 +401,7 @@ export class Orchestrator {
       this.restore(plan, resumeFrom);
     } else {
       this.emitState('mudir', 'thinking', 'Topshiriqni tahlil qilyapman…');
-      const rosterText = roster.map((r) => `- ${r.id}: ${r.title} (natija turi: ${r.deliverable_type})`).join('\n');
+      const rosterText = roster.map((r) => `- ${r.id}: ${r.title} (bajara oladigan turlari: ${r.skills.join(', ')}; boshqa har qanday topshiriq uchun: general)`).join('\n');
       const typesText = Object.entries(this.cfg.deliverables.deliverables)
         .map(([k, v]) => `- ${k}: ${v.title}`)
         .join('\n');
@@ -523,6 +533,18 @@ export class Orchestrator {
     list[attempt] = { attempt, verdict: r.verdict, score: r.score, issues: r.issues, unreviewed, lint };
   }
 
+  /** Joriy ishdagi taqdimot spetsifikatsiyasi (slaydchi yozgan JSON); yo'q bo'lsa null. */
+  getDeck(taskId: string): SlideDeck | null {
+    if (!this.runDir || !/^[A-Za-z0-9_-]+$/.test(taskId)) return null;
+    const file = join(this.runDir, 'deliverables', `${taskId}.slides.json`);
+    if (!existsSync(file)) return null;
+    try {
+      return SlideDeckSchema.parse(JSON.parse(readFileSync(file, 'utf8'))) as SlideDeck;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Ishni to'xtatadi: yangi model so'rovi yuborilmaydi. Hozir javob kutilayotgan so'rov tugaguncha
    * kutiladi (uni uzib bo'lmaydi), keyin ish holati saqlanib to'xtaydi va "Davom ettirish" mumkin bo'ladi.
@@ -606,6 +628,7 @@ export class Orchestrator {
     const maxRev = this.cfg.kafedra.limits.max_revisions;
     const ts = this.state!.tasks[t.id]!;
     const rubric = this.cfg.deliverables.deliverables[t.deliverable_type]?.rubric ?? [];
+    const guide = this.cfg.deliverables.deliverables[t.deliverable_type]?.guide;
     const deps = t.depends_on
       .map((d) => ({ id: d, text: this.snapshot.deliverables[d] }))
       .filter((d): d is { id: string; text: string } => !!d.text)
@@ -620,24 +643,42 @@ export class Orchestrator {
         const attempt = ts.attempt;
         text = await this.withAgent(t.assignee, async () => {
           this.emitState(t.assignee, 'writing', attempt ? "Izohlar bo'yicha tuzatyapman…" : 'Yozyapman…', t.id);
-          const out = await this.call(
-            t.assignee,
-            req,
-            [
-              fence('topshiriq', req.task),
-              sourceBlock(req, MATERIAL_CHAR_LIMIT),
-              `Vazifa: ${t.title}\n${t.instructions}`,
-              `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
-              `Uslubchi rubrikasi:\n${rubric.map((c) => `- ${c}`).join('\n') || '-'}`,
-              deps,
-              ts.feedback ? `Uslubchi izohlari (hammasini hisobga ol):\n${ts.feedback}` : '',
-            ]
-              .filter(Boolean)
-              .join('\n\n'),
-            { purpose: 'work', deliverableType: t.deliverable_type, taskTitle: t.title, attempt },
-            'writing',
-            t.id,
-          );
+          const userMsg = [
+            fence('topshiriq', req.task),
+            sourceBlock(req, MATERIAL_CHAR_LIMIT),
+            `Vazifa: ${t.title}\n${t.instructions}`,
+            guide ? `Natija turi ko'rsatmasi (${t.deliverable_type}). Rolingning odatiy formati o'rniga shunga amal qil:\n${guide}` : '',
+            `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
+            `Uslubchi rubrikasi:\n${rubric.map((c) => `- ${c}`).join('\n') || '-'}`,
+            deps,
+            ts.feedback ? `Uslubchi izohlari (hammasini hisobga ol):\n${ts.feedback}` : '',
+          ]
+            .filter(Boolean)
+            .join('\n\n');
+          const meta = { purpose: 'work' as const, deliverableType: t.deliverable_type, taskTitle: t.title, attempt };
+          let out: string;
+          if (t.deliverable_type === 'slides') {
+            // Taqdimot JSON spetsifikatsiya sifatida olinadi: undan .pptx va ko'rinish yasaladi, uslubchi esa Markdown'ni o'qiydi
+            const want = expectedCountFor('slides', t.instructions);
+            const deck = (await this.callJson(
+              SlideDeckSchema,
+              t.assignee,
+              req,
+              userMsg,
+              meta,
+              'writing',
+              t.id,
+              (d) => {
+                if (want !== undefined && d.slides.length !== want) {
+                  throw new Error(`Slaydlar soni ${d.slides.length} ta, so'ralgani aniq ${want} ta (titul va yakuniy slaydlar ham shu songa kiradi)`);
+                }
+              },
+            )) as SlideDeck;
+            this.save(`deliverables/${t.id}.slides.json`, JSON.stringify(deck, null, 2));
+            out = deckToMarkdown(deck);
+          } else {
+            out = await this.call(t.assignee, req, userMsg, meta, 'writing', t.id);
+          }
           this.emitState(t.assignee, 'idle', 'Uslubchiga topshirdim', t.id);
           return out;
         });

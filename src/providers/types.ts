@@ -10,7 +10,7 @@ export interface CallMeta {
   deliverableType?: string;
   taskTitle?: string;
   attempt?: number;
-  roster?: { id: string; title: string; deliverable_type: string }[];
+  roster?: { id: string; title: string; deliverable_type: string; skills?: string[] }[];
 }
 
 export interface CompleteRequest {

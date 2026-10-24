@@ -1,5 +1,8 @@
 import type { RunSnapshot } from '../src/shared/events';
+import type { SlideDeck } from '../src/shared/slides';
+import { THEME_IDS, THEMES, isThemeId, type ThemeId } from '../src/shared/themes';
 import { renderMarkdown } from './render';
+import { renderDeck } from './slides';
 import type { CardStatus, Store } from './store';
 
 type Child = Node | string | null | undefined;
@@ -353,11 +356,54 @@ export function resultPanel(store: Store, fetchRun: () => Promise<RunSnapshot | 
   const dlBtn = h('button', { class: 'btn small ghost', type: 'button' }, 'Yuklab olish (.md)');
   const note = h('p', { class: 'muted' });
   const reviewBox = h('div', { class: 'reviews' });
-  const el = h('section', { class: 'panel', hidden: true }, list, h('div', { class: 'row' }, copyBtn, dlBtn, docxBtn, viewBtn), note, doc, reviewBox);
+  const themeSel = h('select', { 'aria-label': 'Taqdimot mavzusi' }, ...THEME_IDS.map((id) => h('option', { value: id }, THEMES[id].name)));
+  const pptxBtn = h('button', { class: 'btn small', type: 'button' }, 'PowerPoint (.pptx) yuklab olish');
+  const tools = h('div', { class: 'deck-tools', hidden: true }, h('label', { style: 'margin:0' }, 'Mavzu:'), themeSel, pptxBtn, h('span', { class: 'muted' }, "Prezi'ga: Media > PowerPoint orqali shu faylni import qiling"));
+  const el = h('section', { class: 'panel', hidden: true }, list, h('div', { class: 'row' }, copyBtn, dlBtn, docxBtn, viewBtn), tools, note, doc, reviewBox);
+  let deck: SlideDeck | null = null;
+  let deckFor = '';
+  let theme: ThemeId = 'okean';
+  let themeTouched = false;
   let snap: RunSnapshot | null = null;
   let selected = 'final';
 
   const current = () => (selected === 'final' ? snap?.final : snap?.deliverables[selected]) ?? '';
+  const isSlides = () => !!snap?.plan.find((t) => t.id === selected && t.deliverable_type === 'slides');
+
+  /** Tanlangan vazifa taqdimot bo'lsa, uning JSON spetsifikatsiyasini yuklaydi (ko'rinish va .pptx uchun). */
+  const ensureDeck = async () => {
+    if (!isSlides()) {
+      deck = null;
+      deckFor = '';
+      return;
+    }
+    deckFor = selected;
+    try {
+      const r = await fetch(`/api/run/deck?file=${encodeURIComponent(selected)}`);
+      deck = r.ok ? ((await r.json()) as SlideDeck) : null;
+    } catch {
+      deck = null;
+    }
+    if (deck?.theme && isThemeId(deck.theme) && !themeTouched) theme = deck.theme;
+    themeSel.value = theme;
+    panel.render();
+  };
+  themeSel.addEventListener('change', () => {
+    theme = isThemeId(themeSel.value) ? themeSel.value : 'okean';
+    themeTouched = true;
+    panel.render();
+  });
+  pptxBtn.addEventListener('click', async () => {
+    try {
+      const r = await fetch(`/api/run/export.pptx?file=${encodeURIComponent(selected)}&theme=${theme}`);
+      if (!r.ok) throw new Error(String(r.status));
+      const url = URL.createObjectURL(await r.blob());
+      h('a', { href: url, download: `${selected}.pptx` }).click();
+      URL.revokeObjectURL(url);
+    } catch {
+      note.textContent = ".pptx yuklab bo'lmadi.";
+    }
+  });
 
   viewBtn.addEventListener('click', () => {
     raw = !raw;
@@ -409,7 +455,13 @@ export function resultPanel(store: Store, fetchRun: () => Promise<RunSnapshot | 
         list.append(h('button', { class: 'btn small ghost', type: 'button', 'aria-pressed': String(it.id === selected), onclick: () => { selected = it.id; panel.render(); } }, it.label));
       }
       doc.classList.toggle('raw', raw);
+      const slidesMode = isSlides();
+      if (slidesMode && deckFor !== selected) void ensureDeck();
+      const showDeck = items.length > 0 && slidesMode && !!deck && !raw;
+      tools.hidden = !(slidesMode && deck);
+      doc.classList.toggle('deckview', showDeck);
       if (!items.length) doc.textContent = 'Natija hali tayyor emas.';
+      else if (showDeck && deck) doc.replaceChildren(renderDeck(deck, theme));
       else if (raw) doc.textContent = current();
       else doc.replaceChildren(renderMarkdown(current()));
       copyBtn.disabled = dlBtn.disabled = docxBtn.disabled = !items.length;
@@ -434,6 +486,7 @@ export function resultPanel(store: Store, fetchRun: () => Promise<RunSnapshot | 
   };
   panel.refresh = async () => {
     snap = await fetchRun();
+    deckFor = ''; // taqdimot qayta yozilgan bo'lishi mumkin
     panel.render();
   };
   return panel;

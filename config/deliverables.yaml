@@ -1,4 +1,6 @@
-# Natija turlari va uslubchi rubrikasi.
+# Natija turlari. Har bir tur: nomi, uslubchi rubrikasi va (ixtiyoriy) `guide`: o'qituvchiga format bo'yicha ko'rsatma.
+# O'qituvchi shu turni bajara olishi uchun config/kafedra.yaml da uning `skills` ro'yxatida bo'lishi kerak.
+# `general` turini istalgan o'qituvchi bajaradi (boshqa turlarga sig'maydigan topshiriqlar uchun).
 deliverables:
   lecture:
     title: Ma'ruza matni
@@ -23,14 +25,90 @@ deliverables:
       - Hisob-kitoblar to'g'ri
       - Qiyinlik darajasi o'sib boradi
   slides:
-    title: Slaydlar
+    title: Taqdimot (PowerPoint, .pptx)
     rubric:
-      - Har slaydda sarlavha va 3–5 ta qisqa band
-      - Mantiqiy ketma-ketlik
-      - Slaydlar soni mavzuga mos
+      - Slaydlar mantiqiy ketma-ketlikda (titul, mazmun, yakun) va soni so'ralganiga teng
+      - Har slaydda bitta asosiy fikr, matn qisqa (bandlar 6-14 so'z)
+      - Maketlar xilma-xil (faqat bandlar emas, raqamlar, jadval, vaqt chizig'i, iqtibos ham)
+      - Aniq raqam va faktlar uchun [MANBA KERAK] belgisi qo'yilgan
+      - Spiker uchun izohlar bor
+    guide: |
+      Natijani FAQAT JSON ko'rinishida qaytar (``` belgilarisiz). Tuzilma:
+      {"title":"Taqdimot nomi","subtitle":"qisqa tavsif","theme":"okean|quyosh|zumrad|binafsha|grafit",
+       "slides":[{"layout":"title","title":"...","subtitle":"..."}, ... ,{"layout":"closing","title":"Rahmat!","bullets":["asosiy xulosa"]}]}
+      Slayd maketlari (layout) va ularning maydonlari:
+      - title: title, subtitle (birinchi slayd, majburiy)
+      - section: title, subtitle (bo'lim ajratuvchi)
+      - bullets: title, bullets[2-6] (2-4 ta band chiroyli kartalarda chiqadi; har band 6-14 so'z)
+      - two_column: title, left_title, left[], right_title, right[] (taqqoslash, afzallik/kamchilik)
+      - stats: title, stats[{value:"72%", label:"nimani bildiradi"}] (2-4 ta, value juda qisqa)
+      - quote: quote, author (title ham yoz)
+      - timeline: title, steps[{title, text}] (3-6 ta bosqich)
+      - table: title, table{head[], rows[][]} (2-5 ustun, 8 qatorgacha)
+      - closing: title, bullets[] (oxirgi slayd, majburiy)
+      Har slaydga "notes" (spiker uchun 1-3 jumla) va kerak bo'lsa "visual" (tasvir g'oyasi, matn bilan) yoz.
+      Jami slaydlar soni: topshiriqda N slayd aytilgan bo'lsa, titul va yakuniy slaydlar ham shu songa kiradi, aniq N ta bo'lsin.
+      Maketlarni almashtirib tur: ketma-ket ikkita bir xil maket qo'yma; bandlar maketidan ko'p foydalanma.
   glossary:
     title: Atamalar glossariysi
     rubric:
       - Atamalar o'zbek, rus va ingliz tillarida berilgan
       - Ta'riflar qisqa va aniq
       - Tarjimalar sohada qabul qilingan shaklda
+  essay:
+    title: Referat / esse
+    rubric:
+      - Kirish, asosiy qism (bo'limlar) va xulosa bor
+      - Fikr izchil, tezis dalillar bilan asoslangan
+      - Manbasiz aniq raqamlar [MANBA KERAK] bilan belgilangan
+      - Ilmiy-ommabop uslub, takrorlar yo'q
+    guide: |
+      Markdown'da referat yoz: # Sarlavha, ## Kirish, 3-4 ta ## asosiy bo'lim, ## Xulosa, ## Foydalanilgan manbalar uchun tavsiya (manba nomini o'ylab topma, "[MANBA KERAK]" deb yoz).
+  case:
+    title: Keys-tahlil (case study)
+    rubric:
+      - Real hayotiy vaziyat va aniq savollar bor
+      - Tahlil bosqichlari (muammo, omillar, variantlar, tavsiya) ko'rsatilgan
+      - Namunaviy yechim va baholash mezonlari berilgan
+    guide: |
+      Markdown'da keys yoz: ## Vaziyat tavsifi, ## Ma'lumotlar (shartli sonlar ekanini ayt), ## Savollar (3-5 ta), ## Namunaviy tahlil, ## Baholash mezonlari.
+  lesson_plan:
+    title: Dars rejasi
+    rubric:
+      - Maqsad va kutilgan natijalar aniq
+      - Vaqt taqsimoti (daqiqalar) bor
+      - Faol usullar va baholash ko'zda tutilgan
+    guide: |
+      Markdown'da dars rejasi yoz: ## Maqsad va natijalar, ## Kerakli jihozlar, ## Dars bosqichlari (jadval: bosqich | vaqt | faoliyat), ## Uy vazifasi, ## Baholash.
+  exam:
+    title: Nazorat ishi / imtihon varianti
+    rubric:
+      - Savollar mavzu va qiyinlik bo'yicha muvozanatli
+      - Har savolga ball va javob kaliti berilgan
+      - Variantlar bir xil murakkablikda
+    guide: |
+      Markdown'da nazorat ishi yoz: ## Yo'riqnoma (vaqt, jami ball), ## Savollar (har birining bali bilan), ## Javoblar kaliti va baholash mezonlari.
+  syllabus:
+    title: Fan sillabusi / ishchi dastur
+    rubric:
+      - Fan maqsadi, natijalari va mavzular rejasi bor
+      - Haftalik/soatlar taqsimoti ko'rsatilgan
+      - Baholash tizimi va adabiyotlar uchun joy bor
+    guide: |
+      Markdown'da sillabus yoz: ## Fan haqida, ## O'quv natijalari, ## Mavzular rejasi (jadval: hafta | mavzu | soat | shakl), ## Baholash tizimi, ## Adabiyotlar (nomini o'ylab topma: [MANBA KERAK]).
+  report:
+    title: Tahliliy ma'lumotnoma
+    rubric:
+      - Xulosa (executive summary) boshida berilgan
+      - Tahlil tuzilmali, raqamlar manbasi belgilangan
+      - Aniq tavsiyalar bor
+    guide: |
+      Markdown'da ma'lumotnoma yoz: ## Qisqa xulosa, ## Hozirgi holat, ## Tahlil, ## Tavsiyalar, ## Xavflar. Raqamlar uchun manba bo'lmasa [MANBA KERAK].
+  general:
+    title: Erkin format
+    rubric:
+      - Topshiriqda so'ralgan narsa to'liq bajarilgan
+      - Tuzilma aniq va til toza
+      - Manbasiz aniq raqamlar [MANBA KERAK] bilan belgilangan
+    guide: |
+      Topshiriq qaysi shaklni talab qilsa, shu shaklda Markdown yoz. Aniq format aytilmagan bo'lsa, sarlavhalar bilan tuzilmali matn yoz.

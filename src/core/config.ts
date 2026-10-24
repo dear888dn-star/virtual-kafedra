@@ -40,6 +40,13 @@ function loadYaml<T>(file: string, schema: ZodType<T, any, any>): T {
   return res.data;
 }
 
+/** O'qituvchi bajara oladigan natija turlari: skills (yoki asosiy deliverable_type) va hamma uchun ochiq `general`. */
+export function skillsOf(a: { deliverable_type?: string; skills?: string[] }): Set<string> {
+  const s = new Set<string>(a.skills ?? (a.deliverable_type ? [a.deliverable_type] : []));
+  s.add('general');
+  return s;
+}
+
 export function loadConfig(root = ROOT): AppConfig {
   const kafedra = loadYaml('kafedra.yaml', KafedraCfg);
   const providers = loadYaml('providers.yaml', ProvidersFile);

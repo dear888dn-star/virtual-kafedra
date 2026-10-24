@@ -30,6 +30,8 @@ export interface BootOptions {
   /** Testlar uchun: konfigni almashtirish */
   cfg?: AppConfig;
   fetchFn?: typeof fetch;
+  /** Sozlamalarni qayta yuklashda mavjud hodisa shinasini saqlab qolish uchun */
+  bus?: EventBus;
 }
 
 const ROLES = ['mudir', 'uslubchi', 'oqituvchi'] as const;
@@ -96,7 +98,7 @@ export function boot(opts: BootOptions = {}): App {
   const rateLimitEvery = opts.rateLimitEvery ?? 7;
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((r) => setTimeout(r, ms)));
   const usage = new UsageStore(opts.usagePath === undefined ? join(ROOT, 'state', 'usage.json') : opts.usagePath, opts.now);
-  const bus = new EventBus();
+  const bus = opts.bus ?? new EventBus();
   const problems: string[] = [];
 
   const { items: real, enabled: enabledReal, problems: realProblems } = buildRealProviders(cfg, env, opts.fetchFn);

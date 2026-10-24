@@ -2,43 +2,45 @@
 kafedra:
   name: Iqtisodiyot va turizm kafedrasi
   audience: Universitet bakalavr kursi
-  languages: [uz, ru, en]
+  languages: [ uz, ru, en ]
   default_language: uz
 
 limits:
-  max_revisions: 2        # uslubchi qaytargan ishni necha marta qayta ishlash mumkin
-  concurrency: 3          # bir vaqtda ishlaydigan o'qituvchilar soni
-  max_input_chars: 20000  # topshiriq matnining maksimal hajmi
-  max_material_chars: 30000  # manba materialning maksimal hajmi
-  max_plan_tasks: 8          # mudir bitta topshiriqni ko'pi bilan nechta vazifaga bo'la oladi
-  max_requests_per_run: 60   # bitta topshiriq uchun model so'rovlarining qat'iy chegarasi (tokenlarni himoya qiladi)
+  max_revisions: 2 # uslubchi qaytargan ishni necha marta qayta ishlash mumkin
+  concurrency: 3 # bir vaqtda ishlaydigan o'qituvchilar soni
+  max_input_chars: 20000 # topshiriq matnining maksimal hajmi
+  max_material_chars: 30000 # manba materialning maksimal hajmi
+  max_plan_tasks: 8 # mudir bitta topshiriqni ko'pi bilan nechta vazifaga bo'la oladi
+  max_requests_per_run: 60 # bitta topshiriq uchun model so'rovlarining qat'iy chegarasi (tokenlarni himoya qiladi)
 
 # Agentlar. O'qituvchi qo'shish uchun yangi qator yozing (role: oqituvchi).
 agents:
   - id: mudir
-    name: Prof. Rahimov
+    name: Prof. Marina Petrovna
     role: mudir
     title: Kafedra mudiri
     prompt: mudir.md
     color: "#7a3b3b"
   - id: uslubchi
-    name: Malika opa
+    name: Dostonboy
     role: uslubchi
     title: Uslubchi
     prompt: uslubchi.md
     color: "#8a2d6b"
   - id: t1
-    name: Aziza
+    name: Dilshod
     role: oqituvchi
     title: Ma'ruzachi
     deliverable_type: lecture
+    skills: [lecture, essay, report, lesson_plan, syllabus]
     prompt: ma-ruzachi.md
     color: "#2f6f8f"
   - id: t2
-    name: Bekzod
+    name: Sarvar
     role: oqituvchi
     title: Testchi
     deliverable_type: test
+    skills: [test, exam]
     prompt: testchi.md
     color: "#3f7d4e"
   - id: t3
@@ -46,19 +48,22 @@ agents:
     role: oqituvchi
     title: Amaliyotchi
     deliverable_type: practice
+    skills: [practice, case]
     prompt: amaliyotchi.md
     color: "#b5702a"
   - id: t4
-    name: Nilufar
+    name: Mubina
     role: oqituvchi
     title: Slaydchi
     deliverable_type: slides
+    skills: [slides]
     prompt: slaydchi.md
     color: "#6a4fb0"
   - id: t5
-    name: Jasur
+    name: Arslon
     role: oqituvchi
     title: Lingvist
     deliverable_type: glossary
+    skills: [glossary]
     prompt: lingvist.md
     color: "#a3453f"

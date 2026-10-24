@@ -36,7 +36,7 @@ function realistic(script: Script = {}) {
         text = script.plan ? script.plan(log.plan, req) : defaultPlan();
       } else if (/Yig'ish bosqichi/.test(msg)) {
         text = 'Hammasi tayyor. [MANBA KERAK] joylarini tekshiring.';
-      } else if (req.json) {
+      } else if (req.json && !/ko'rsatmasi \(slides\)/.test(msg)) {
         log.review++;
         const title = /Vazifa: (.+)/.exec(msg)?.[1] ?? '';
         text = script.review ? script.review(log.review, req, title) : '{"verdict":"approve","score":9,"issues":[]}';
@@ -61,7 +61,14 @@ function fakeWork(title: string, n: number): string {
     case '3':
       return [1, 2].map((i) => `## ${i}-masala\nShart: ${body}\n\n**Yechim:** hisob\n**Javob:** ${i}\n`).join('\n');
     case '4':
-      return [1, 2, 3].map((i) => `## Slayd ${i}: Sarlavha\n- ${body}\n- band\n- band\n`).join('\n');
+      return JSON.stringify({
+        title: 'Taqdimot',
+        slides: [
+          { layout: 'title', title: 'Taqdimot' },
+          { layout: 'bullets', title: 'Asosiy', bullets: [body, 'ikkinchi band'] },
+          { layout: 'closing', title: 'Rahmat!' },
+        ],
+      });
     case '5':
       return `# Glossariy\n\n| O'zbekcha | Русский | English |\n|---|---|---|\n${['a', 'b', 'c', 'd', 'e'].map((x) => `| ${x} | ${x} | ${x} |`).join('\n')}\n`;
     default:
@@ -221,7 +228,9 @@ test("limit tugasa ish saqlanadi va davom ettirilganda tugagan vazifalar qayta b
   assert.equal(log2.log.plan, 0, 'reja qayta tuzilmasi kerak emas');
   assert.ok(workBefore + log2.log.work.length >= 5);
   assert.equal(JSON.parse(readFileSync(join(runsDir, id, 'state.json'), 'utf8')).status, 'finished');
-  assert.ok(readdirSync(join(runsDir, id, 'deliverables')).length === 5);
+  const files = readdirSync(join(runsDir, id, 'deliverables'));
+  assert.equal(files.filter((f) => f.endsWith('.md')).length, 5);
+  assert.ok(files.includes('T4.slides.json'), 'taqdimot spetsifikatsiyasi saqlanishi kerak');
 });
 
 test("tugagan yoki noma'lum ishni davom ettirib bo'lmaydi", async () => {

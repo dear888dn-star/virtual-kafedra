@@ -8,6 +8,8 @@ export const AgentCfg = z.object({
   role: z.enum(['mudir', 'uslubchi', 'oqituvchi']),
   title: z.string().min(1),
   deliverable_type: z.string().optional(),
+  /** Bu o'qituvchi bajara oladigan natija turlari (deliverable_type asosiy ko'nikma; `general` hammaga ochiq) */
+  skills: z.array(z.string()).optional(),
   prompt: z.string().min(1),
   color: hexColor,
 });
@@ -80,7 +82,7 @@ export const ProvidersFile = z.object({
 export type ProvidersFile = z.infer<typeof ProvidersFile>;
 
 export const DeliverablesFile = z.object({
-  deliverables: z.record(z.object({ title: z.string(), rubric: z.array(z.string()) })),
+  deliverables: z.record(z.object({ title: z.string(), rubric: z.array(z.string()), guide: z.string().optional() })),
 });
 export type DeliverablesFile = z.infer<typeof DeliverablesFile>;
 

@@ -2,9 +2,12 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
 import express, { type NextFunction, type Request, type Response } from 'express';
+import { AdminError, applyAdminUpdate, readAdminSettings } from '../core/admin';
 import { boot } from '../core/bootstrap';
 import { ROOT, toPublicConfig } from '../core/config';
 import { markdownToDocx } from '../export/docx';
+import { buildPptx } from '../export/pptx';
+import { isThemeId } from '../shared/themes';
 import { detectPii } from '../privacy/pii';
 import { SensitiveRoutingError } from '../providers/types';
 import { RunRequest } from '../schemas';
@@ -17,7 +20,7 @@ try {
 
 const PORT = Number(process.env.PORT ?? 3100);
 const HOST = '127.0.0.1';
-const app = boot();
+let app = boot();
 const webDir = join(ROOT, 'web');
 
 const server = express();
@@ -46,10 +49,14 @@ server.use(express.json({ limit: '400kb' }));
 
 server.get('/', (_req, res) => res.sendFile(join(webDir, 'index.html')));
 server.get('/style.css', (_req, res) => res.sendFile(join(webDir, 'style.css')));
-server.get('/app.js', async (_req, res) => {
+server.get('/admin', (_req, res) => res.sendFile(join(webDir, 'admin.html')));
+server.get('/icon.svg', (_req, res) => res.sendFile(join(webDir, 'icon.svg')));
+server.get('/admin.js', (_req, res) => bundle('admin.ts', res));
+server.get('/app.js', (_req, res) => bundle('main.ts', res));
+async function bundle(entry: string, res: Response): Promise<void> {
   try {
     const out = await build({
-      entryPoints: [join(webDir, 'main.ts')],
+      entryPoints: [join(webDir, entry)],
       bundle: true,
       write: false,
       format: 'esm',
@@ -61,6 +68,31 @@ server.get('/app.js', async (_req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).type('text/plain').send('Frontend yig\'ilmadi: ' + (e as Error).message);
+  }
+}
+
+// ---- Boshqaruv paneli ----
+server.get('/api/admin/settings', (_req, res) => {
+  res.json(readAdminSettings(app.cfg, process.env, app.orchestrator.status === 'running'));
+});
+
+server.put('/api/admin/settings', (req, res) => {
+  if (app.orchestrator.status === 'running') {
+    res.status(409).json({ error: "Topshiriq bajarilmoqda. Tugagach yoki to'xtatgach saqlang." });
+    return;
+  }
+  try {
+    const { envChanges } = applyAdminUpdate(req.body, app.cfg);
+    for (const [k, v] of Object.entries(envChanges)) process.env[k] = v;
+    app = boot({ bus: app.bus });
+    res.json({ ok: true, mock: app.mock, problems: app.problems, settings: readAdminSettings(app.cfg, process.env, false) });
+  } catch (e) {
+    if (e instanceof AdminError) {
+      res.status(400).json({ error: e.message });
+      return;
+    }
+    console.error("[xato] sozlamalarni qo'llash:", e instanceof Error ? e.message : e);
+    res.status(500).json({ error: (e as Error).message });
   }
 });
 
@@ -103,6 +135,36 @@ ${parsed.data.material ?? ''}`);
       return;
     }
     res.status(500).json({ error: (e as Error).message });
+  }
+});
+
+// Taqdimot (slaydchi yozgan JSON): ko'rinish va PowerPoint (.pptx) eksporti. ?file=<vazifa id>&theme=okean
+server.get('/api/run/deck', (req, res) => {
+  const deck = app.orchestrator.getDeck(String(req.query.file ?? ''));
+  if (!deck) {
+    res.status(404).json({ error: "Bu vazifada taqdimot yo'q" });
+    return;
+  }
+  res.json(deck);
+});
+
+server.get('/api/run/export.pptx', async (req, res) => {
+  const file = String(req.query.file ?? '');
+  const deck = app.orchestrator.getDeck(file);
+  if (!deck) {
+    res.status(404).json({ error: "Bu vazifada taqdimot yo'q" });
+    return;
+  }
+  try {
+    const theme = isThemeId(req.query.theme) ? req.query.theme : undefined;
+    const buf = await buildPptx(deck, { theme, footerLabel: app.cfg.kafedra.kafedra.name });
+    res
+      .type('application/vnd.openxmlformats-officedocument.presentationml.presentation')
+      .setHeader('Content-Disposition', `attachment; filename="${file.replace(/[^A-Za-z0-9_-]/g, '')}.pptx"`)
+      .send(Buffer.from(buf));
+  } catch (e) {
+    console.error('[xato] pptx yasash:', e instanceof Error ? e.message : e);
+    res.status(500).json({ error: "Taqdimot faylini yasab bo'lmadi" });
   }
 });
 

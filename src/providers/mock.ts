@@ -70,11 +70,21 @@ function practice(t: string, count = 3): string {
   return `# Amaliy mashqlar: ${t}\n\n${Array.from({ length: count }, (_, i) => one(i + 1)).join('\n')}`;
 }
 
-function slides(t: string, count = 5): string {
-  const s = (n: number, title: string) =>
-    `## Slayd ${n}: ${title}\n- Birinchi muhim band\n- Ikkinchi muhim band\n- Uchinchi muhim band\n`;
-  const titles = ['Mavzu va maqsad', 'Asosiy tushunchalar', 'Misollar', "Amaliy qo'llanish", 'Xulosa'];
-  return `# Slaydlar: ${t}\n\n${Array.from({ length: count }, (_, i) => s(i + 1, titles[i] ?? `Qo'shimcha ${i + 1}`)).join('\n')}`;
+function slides(t: string, count = 6): string {
+  const n = Math.max(3, count);
+  const middle: Record<string, unknown>[] = [
+    { layout: 'bullets', title: 'Asosiy tushunchalar', bullets: ['Talab va taklif bozor muvozanatini belgilaydi', 'Narx signal vazifasini bajaradi', 'Xarajat va daromad korxona qarorini shakllantiradi'], notes: 'Tushunchalarni qisqa misol bilan tushuntiring.' },
+    { layout: 'stats', title: 'Raqamlarda', stats: [{ value: '65%', label: "xonalarning o'rtacha band bo'lishi (namuna)" }, { value: '3x', label: 'mavsumiy talab farqi (namuna)' }], notes: 'Raqamlar shartli.' },
+    { layout: 'two_column', title: 'Talab va taklif', left_title: 'Talab', left: ['Narx oshsa kamayadi', 'Daromadga bog\'liq'], right_title: 'Taklif', right: ['Narx oshsa ortadi', 'Xarajatga bog\'liq'] },
+    { layout: 'timeline', title: 'Tahlil bosqichlari', steps: [{ title: "Ma'lumot", text: 'Bozorni o\'rganish' }, { title: 'Tahlil', text: 'Omillarni aniqlash' }, { title: 'Qaror', text: 'Variant tanlash' }] },
+    { layout: 'quote', title: 'Fikr', quote: "Bozor narxlar orqali so'zlaydi.", author: 'Iqtisodiy maqol' },
+    { layout: 'table', title: 'Taqqoslash', table: { head: ['Ko\'rsatkich', 'Yoz', 'Qish'], rows: [['Band xonalar', '85%', '40%'], ['Narx', 'Yuqori', 'Past']] } },
+    { layout: 'section', title: "Amaliy qo'llanish", subtitle: 'Misollar bilan' },
+  ];
+  const slidesArr: Record<string, unknown>[] = [{ layout: 'title', title: t.slice(0, 80), subtitle: 'Namunaviy mock taqdimot' }];
+  for (let i = 0; i < n - 2; i++) slidesArr.push({ ...middle[i % middle.length], title: i < middle.length ? (middle[i]!.title as string) : `Qo'shimcha ${i + 1}` });
+  slidesArr.push({ layout: 'closing', title: 'Rahmat!', bullets: ['Asosiy g\'oyalarni takrorlang', 'Savollarga javob bering'] });
+  return JSON.stringify({ title: t.slice(0, 100), subtitle: 'Iqtisodiyot va turizm kafedrasi', theme: 'okean', slides: slidesArr });
 }
 
 function glossary(t: string): string {
@@ -159,7 +169,8 @@ export class MockProvider implements Provider {
         const revised = (meta.attempt ?? 0) > 0 ? '\n\n> Uslubchi izohlari hisobga olindi (qayta ishlangan variant).\n' : '';
         const type = meta.deliverableType ?? 'lecture';
         const count = expectedCountFor(type, req.messages[0]?.content ?? '');
-        text = write(topic, count) + revised;
+        // Taqdimot JSON: oxiriga matn qo'shib bo'lmaydi
+        text = write(topic, count) + (type === 'slides' ? '' : revised);
         break;
       }
       case 'review': {

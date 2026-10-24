@@ -5,3 +5,5 @@ runs/*
 state/usage.json
 reports/
 *.log
+*.bak
+*.tmp

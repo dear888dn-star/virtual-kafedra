@@ -48,9 +48,15 @@ export function lintDeliverable(type: string, text: string, opts: LintOptions = 
   }
 
   switch (type) {
+    case 'essay':
+    case 'report':
+    case 'case':
+    case 'lesson_plan':
+    case 'syllabus':
+    case 'exam':
     case 'lecture': {
       const sections = (t.match(/^##\s+\S/gm) ?? []).length;
-      if (sections < 3) issues.push({ place: "tuzilma", problem: `Ma'ruzada ${sections} ta bo'lim (##) bor, kamida 3 ta kerak`, fix: "Kirish, asosiy qism bo'limlari va xulosani ## sarlavhalar bilan ajrating" });
+      if (sections < 3) issues.push({ place: "tuzilma", problem: `${type === 'lecture' ? "Ma'ruzada" : 'Matnda'} ${sections} ta bo'lim (##) bor, kamida 3 ta kerak`, fix: "Kirish, asosiy qism bo'limlari va xulosani ## sarlavhalar bilan ajrating" });
       break;
     }
     case 'test': {
