@@ -1,0 +1,61 @@
+# Kafedra sozlamalari. Rollar, o'qituvchilar soni va chegaralar shu yerda.
+kafedra:
+  name: Iqtisodiyot va turizm kafedrasi
+  audience: Universitet bakalavr kursi
+  languages: [uz, ru, en]
+  default_language: uz
+
+limits:
+  max_revisions: 2        # uslubchi qaytargan ishni necha marta qayta ishlash mumkin
+  concurrency: 3          # bir vaqtda ishlaydigan o'qituvchilar soni
+  max_input_chars: 20000  # topshiriq matnining maksimal hajmi
+
+# Agentlar. O'qituvchi qo'shish uchun yangi qator yozing (role: oqituvchi).
+agents:
+  - id: mudir
+    name: Prof. Rahimov
+    role: mudir
+    title: Kafedra mudiri
+    prompt: mudir.md
+    color: "#7a3b3b"
+  - id: uslubchi
+    name: Malika opa
+    role: uslubchi
+    title: Uslubchi
+    prompt: uslubchi.md
+    color: "#8a2d6b"
+  - id: t1
+    name: Aziza
+    role: oqituvchi
+    title: Ma'ruzachi
+    deliverable_type: lecture
+    prompt: ma-ruzachi.md
+    color: "#2f6f8f"
+  - id: t2
+    name: Bekzod
+    role: oqituvchi
+    title: Testchi
+    deliverable_type: test
+    prompt: testchi.md
+    color: "#3f7d4e"
+  - id: t3
+    name: Sardor
+    role: oqituvchi
+    title: Amaliyotchi
+    deliverable_type: practice
+    prompt: amaliyotchi.md
+    color: "#b5702a"
+  - id: t4
+    name: Nilufar
+    role: oqituvchi
+    title: Slaydchi
+    deliverable_type: slides
+    prompt: slaydchi.md
+    color: "#6a4fb0"
+  - id: t5
+    name: Jasur
+    role: oqituvchi
+    title: Lingvist
+    deliverable_type: glossary
+    prompt: lingvist.md
+    color: "#a3453f"

@@ -1,0 +1,7 @@
+node_modules/
+.env
+runs/*
+!runs/.gitkeep
+state/usage.json
+reports/
+*.log

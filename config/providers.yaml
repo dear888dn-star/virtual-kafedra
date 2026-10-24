@@ -1,0 +1,99 @@
+# Provayderlar. Manbalar va sanalar: docs/ASSUMPTIONS.md (tekshiruv sanasi 2026-10-24).
+# Hamma real provayder `enabled: false`: kalit qo'shib, modelni tekshirgach yoqing.
+# # VERIFY = rasmiy hujjatda aniq tasdiqlanmagan, o'z dashboardingizdan tekshiring.
+# Model nomlari va limitlar tez o'zgaradi. Limitlar ehtiyotkor qo'yilgan: o'zingiznikiga moslang.
+#
+# models: rol bo'yicha model (mudir | uslubchi | oqituvchi) yoki `default`.
+# reset_tz: kunlik limit qaysi vaqt zonasida nolga tushadi.
+
+providers:
+  - id: mock
+    kind: mock
+    enabled: true
+    trains_on_data: false
+    limits: { rpm: 600, rpd: 5000 }
+  - id: mock-b
+    kind: mock
+    enabled: true
+    trains_on_data: false
+    limits: { rpm: 600, rpd: 5000 }
+
+  - id: gemini
+    kind: gemini
+    api_key_env: GEMINI_API_KEY
+    enabled: false
+    trains_on_data: true     # bepul tarifda kontent mahsulotlarni yaxshilash uchun ishlatilishi mumkin (shartlarni tekshiring) # VERIFY
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai   # rasmiy hujjat, 2026-10-24
+    reset_tz: America/Los_Angeles   # hujjat: kunlik kvota Tinch okean vaqti yarim tunida nolga tushadi
+    json_mode: none                 # json_object hujjatda aniq yozilmagan # VERIFY
+    models:
+      default: gemini-3.8-flash     # hujjatdagi misol nomi; mavjudligini AI Studio'da tekshiring # VERIFY
+    limits: { rpm: 5, rpd: 100 }    # sahifa raqam bermaydi: AI Studio > rate limit'dan oling # VERIFY
+  - id: groq
+    kind: openai_compat
+    api_key_env: GROQ_API_KEY
+    enabled: false
+    trains_on_data: unknown  # VERIFY
+    base_url: https://api.groq.com/openai/v1   # rasmiy hujjat, 2026-10-24
+    json_mode: none          # # VERIFY
+    models:
+      default: openai/gpt-oss-120b   # hujjat jadvalida bor # VERIFY (Free plan uchun mavjudligi)
+    limits: { rpm: 30, rpd: 1000, tpm: 8000 }   # hujjat jadvali (Developer plan bazasi), Free uchun hisobingizdan tekshiring # VERIFY
+  - id: cerebras
+    kind: openai_compat
+    api_key_env: CEREBRAS_API_KEY
+    enabled: false
+    trains_on_data: unknown  # VERIFY
+    base_url: https://api.cerebras.ai/v1   # rasmiy hujjat, 2026-10-24
+    json_mode: none          # hujjat json_schema (Structured Outputs) tavsiya qiladi # VERIFY
+    models:
+      default: gpt-oss-120b  # Free Trial jadvalida bor # VERIFY
+    limits: { rpm: 5, tpm: 30000 }   # Free Trial: 5 RPM, 30K uncached TPM, 1M TPD; RPD yo'q # VERIFY
+  - id: openrouter
+    kind: openai_compat
+    api_key_env: OPENROUTER_API_KEY
+    enabled: false
+    trains_on_data: unknown  # VERIFY (modelga qarab farq qiladi)
+    base_url: https://openrouter.ai/api/v1   # rasmiy hujjat, 2026-10-24
+    json_mode: none          # # VERIFY
+    models: {}               # ":free" bilan tugaydigan model nomini openrouter.ai/models dan tanlang # VERIFY
+    limits: { rpm: 20, rpd: 50 }   # ":free" modellar, <10 kredit sotib olinganda; >=10 kreditda rpd 1000 # hujjat 2026-10-24
+  - id: mistral
+    kind: openai_compat
+    api_key_env: MISTRAL_API_KEY
+    enabled: false
+    trains_on_data: unknown  # VERIFY
+    base_url: https://api.mistral.ai/v1   # endpoint: /v1/chat/completions (hujjat)
+    json_mode: json_object   # hujjatda tasdiqlangan
+    models: {}               # model nomini docs.mistral.ai dan tanlang # VERIFY
+    limits: {}               # tarif limitlari hujjatda topilmadi, console'dan oling # VERIFY
+  - id: deepseek
+    kind: openai_compat
+    api_key_env: DEEPSEEK_API_KEY
+    enabled: false           # pullik: daily_budget_usd belgilangach yoqing
+    trains_on_data: unknown  # VERIFY
+    daily_budget_usd: 0.5
+    base_url: https://api.deepseek.com   # rasmiy hujjat, 2026-10-24
+    json_mode: none          # # VERIFY
+    models:
+      default: deepseek-flash   # hujjat: "Use deepseek-flash as the model name"
+    # narx USD/1M token: input cache-miss, output; eng qimmat (peak) narx olingan # VERIFY
+    price: { input_per_mtok: 0.3, output_per_mtok: 1.2 }
+    limits: {}               # hujjatda qat'iy limit yo'q (alohida sahifada)
+  - id: ollama
+    kind: ollama
+    enabled: false           # mahalliy model: kalit kerak emas, maxfiy ishlar uchun ruxsat
+    trains_on_data: false    # ma'lumot kompyuteringizdan chiqmaydi
+    base_url: http://localhost:11434/v1   # rasmiy hujjat, 2026-10-24
+    json_mode: json_object   # hujjatda tasdiqlangan
+    timeout_ms: 180000
+    models: {}               # `ollama list` dagi o'rnatilgan model nomi
+    limits: {}
+
+# Rol bo'yicha fallback zanjiri (chapdan o'ngga). Yoqilmagan yoki kalitsiz provayderlar o'tkazib yuboriladi.
+chains:
+  mudir: [gemini, deepseek, openrouter, ollama]
+  uslubchi: [gemini, openrouter, ollama]
+  oqituvchi: [groq, cerebras, gemini, openrouter, ollama]
+
+mock_chain: [mock, mock-b]

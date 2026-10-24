@@ -1,0 +1,36 @@
+# Natija turlari va uslubchi rubrikasi.
+deliverables:
+  lecture:
+    title: Ma'ruza matni
+    rubric:
+      - Til toza va tanlangan tilga mos
+      - Daraja bakalavr talabasiga mos
+      - Kirish, asosiy qism va xulosa bor
+      - Iqtisodiy/turizm atamalari to'g'ri ishlatilgan
+      - Aniq raqam va faktlar uchun [MANBA KERAK] belgisi qo'yilgan
+  test:
+    title: Test savollari
+    rubric:
+      - Har savolda 4 ta variant va bitta to'g'ri javob
+      - To'g'ri javobga izoh berilgan
+      - Savollar mavzuni to'liq qamragan
+      - Variantlar bir-biriga o'xshash emas
+  practice:
+    title: Amaliy mashq va masalalar
+    rubric:
+      - Masalalar mavzuga mos va hayotiy
+      - Har masalada yechim bosqichma-bosqich berilgan
+      - Hisob-kitoblar to'g'ri
+      - Qiyinlik darajasi o'sib boradi
+  slides:
+    title: Slaydlar
+    rubric:
+      - Har slaydda sarlavha va 3–5 ta qisqa band
+      - Mantiqiy ketma-ketlik
+      - Slaydlar soni mavzuga mos
+  glossary:
+    title: Atamalar glossariysi
+    rubric:
+      - Atamalar o'zbek, rus va ingliz tillarida berilgan
+      - Ta'riflar qisqa va aniq
+      - Tarjimalar sohada qabul qilingan shaklda

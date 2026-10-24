@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="uz">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Virtual Kafedra</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <header class="top">
+    <div class="brand">
+      <span class="logo" aria-hidden="true">🎓</span>
+      <div>
+        <h1 id="kafedra-name">Virtual Kafedra</h1>
+        <p id="kafedra-sub" class="muted"></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <span id="run-status" class="badge" role="status" aria-live="polite">Bo'sh</span>
+      <span id="conn-badge" class="badge badge-warn" role="status" hidden>Aloqa uzildi, qayta ulanmoqda…</span>
+      <span id="mode-badge" class="badge badge-mock" hidden>MOCK</span>
+      <button id="motion-toggle" class="btn ghost" type="button" aria-pressed="false" title="Animatsiyalarni o'chirish">Animatsiya</button>
+      <button id="theme-toggle" class="btn ghost" type="button" title="Yorug'/qorong'i rejim">Mavzu</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="Kafedra xonasi">
+      <div class="canvas-wrap">
+        <canvas id="office" role="img" aria-label="Kafedra ofisi: mudir, uslubchi va o'qituvchilar"></canvas>
+        <div id="tooltip" class="tooltip" hidden></div>
+      </div>
+      <ul id="legend" class="legend" aria-label="Agentlar"></ul>
+    </section>
+
+    <aside class="side" aria-label="Boshqaruv paneli">
+      <div class="tabs" role="tablist" id="tabs"></div>
+      <div id="panels" class="panels"></div>
+    </aside>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
