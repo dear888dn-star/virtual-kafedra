@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import { EventBus } from '../src/core/events';
 import { RateLimiter, msUntilNextDay } from '../src/providers/limiter';
-import { OpenAICompatProvider, parseRetryAfter } from '../src/providers/openai-compat';
+import { OpenAICompatProvider, parseQuotaError, parseRetryAfter } from '../src/providers/openai-compat';
 import { Router, type CallContext, type ChainItem } from '../src/providers/router';
 import {
   AuthError,
@@ -353,4 +353,40 @@ test('limiter: bir vaqtda kutayotgan agentlar navbat bilan o\'tadi, hech biri ta
   assert.equal(results.length, 5);
   assert.equal(a.calls, 5);
   assert.ok(k.c.slept.length >= 2, 'kutish bo\'lishi kerak edi');
+});
+
+test('Google 429: kunlik kvota matni tahlil qilinadi (qayta urinish vaqti, daily)', () => {
+  const body = JSON.stringify([
+    {
+      error: {
+        code: 429,
+        message: 'You exceeded your current quota.\n* Quota exceeded ... Generate content requests per day limit exceeded on Free Tier.\nPlease retry in 14h15m16.3s.',
+        details: [{ '@type': 'type.googleapis.com/google.rpc.RetryInfo', retryDelay: '51316s' }],
+      },
+    },
+  ]);
+  const q = parseQuotaError(body);
+  assert.equal(q.daily, true);
+  assert.equal(q.retryMs, 51_316_000);
+  assert.match(q.message, /exceeded your current quota/);
+  const plain = parseQuotaError('rate limited. Please retry in 7s');
+  assert.equal(plain.daily, false);
+  assert.equal(plain.retryMs, 7000);
+});
+
+test('kunlik kvota tugasa: qayta urinmaydi, hisob saqlanadi, keyingi (boshqa model) provayderga o\'tadi', async () => {
+  const a = fake('a', () => new RateLimitError('kunlik kvota', 50_000_000, true));
+  const b = fake('b');
+  const { router, usage, bus } = setup([
+    { provider: a, models: { default: 'm' }, limits: { rpd: 20 } },
+    { provider: b, models: { default: 'm' } },
+  ]);
+  const res = await router.complete(REQ, CTX);
+  assert.equal(res.provider, 'b');
+  assert.equal(a.calls, 1, 'kunlik kvotada qayta urinish bo\'lmasligi kerak');
+  assert.equal(usage.today('a').requests, 20);
+  assert.ok(bus.all().some((e) => e.type === 'provider_switch' && /kunlik kvota/.test(String(e.data?.reason))));
+  // keyingi chaqiruvda a umuman chaqirilmaydi
+  await router.complete(REQ, CTX);
+  assert.equal(a.calls, 1);
 });

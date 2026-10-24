@@ -48,3 +48,9 @@ Yangilangan: 2026-10-24 (2-bosqich)
 - PII aniqlash faqat oddiy regex (telefon, email, pasport AA1234567, Luhn-tekshirilgan karta, 14 raqamli PINFL). Ishonchli emas: noto'g'ri ijobiy va o'tkazib yuborilgan holatlar bo'lishi mumkin. Faqat topshiriq matni tekshiriladi.
 - Model chiqishi HTML sifatida emas, DOM daraxti (textContent) orqali ko'rsatiladi; havolalardan faqat http(s) ruxsat etilgan.
 - `npm run eval-lang`: yoqilgan va to'liq sozlangan provayderlarga 5 ta o'zbekcha namuna yuboradi, `reports/lang-eval.md` ga yozadi. Baholash avtomatik emas.
+
+## Gemini bepul kvotasi (haqiqiy 429 xabaridan, 2026-10-24)
+- Bepul tarif: **kuniga 20 so'rov, model bo'yicha va loyiha bo'yicha** (`GenerateRequestsPerDayPerProjectPerModel-FreeTier`, `quotaValue: 20`). Kun Tinch okean vaqti yarim tunida yangilanadi (O'zbekiston vaqti bilan taxminan 12:00).
+- `gemini-3.5-flash` aslida `gemini-3.6-flash` kvotasiga yozilgan (alias).
+- Har bir model alohida kvotaga ega, shuning uchun `providers.yaml` da bir kalit bilan 4 ta Gemini yozuvi (`gemini`, `gemini-lite`, `gemini-lite2`, `gemini-preview`) zanjirda ketma-ket turadi. Boshqalarining kvotasi 20 deb taxmin qilingan (tasdiqlanmagan).
+- Kunlik kvota tugaganini tizim 429 javobidan aniqlaydi, hisobni `state/usage.json` ga yozadi (qayta ishga tushganda ham eslab qoladi) va qayta urinmasdan keyingi modelga o'tadi.

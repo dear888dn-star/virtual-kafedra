@@ -41,6 +41,8 @@ export class RateLimitError extends Error {
   constructor(
     message: string,
     public readonly retryAfterMs = 2000,
+    /** Kunlik kvota tugagan: qayta urinishdan foyda yo'q, keyingi provayderga o'tish kerak */
+    public readonly daily = false,
   ) {
     super(message);
     this.name = 'RateLimitError';

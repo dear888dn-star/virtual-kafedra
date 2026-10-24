@@ -21,6 +21,27 @@ export interface OpenAICompatOptions {
   fetchFn?: typeof fetch;
 }
 
+/** 429 javob tanasidan kvota ma'lumotini ajratadi (Google: RetryInfo va "Please retry in 14h15m..."). */
+export function parseQuotaError(body: string): { message: string; retryMs: number | null; daily: boolean } {
+  let message = '';
+  let retryMs: number | null = null;
+  try {
+    const j = JSON.parse(body) as unknown;
+    const first = Array.isArray(j) ? j[0] : j;
+    const err = (first as { error?: { message?: string; details?: { retryDelay?: string }[] } } | undefined)?.error;
+    message = (err?.message ?? '').split('\n')[0] ?? '';
+    const d = err?.details?.find((x) => typeof x.retryDelay === 'string')?.retryDelay;
+    if (d) retryMs = Math.round(parseFloat(d) * 1000);
+  } catch {
+    message = body.replace(/\s+/g, ' ').slice(0, 120);
+  }
+  if (retryMs === null || Number.isNaN(retryMs)) {
+    const m = body.match(/retry in (?:(\d+)h)?(?:(\d+)m)?(?:([\d.]+)s)?/i);
+    retryMs = m && (m[1] || m[2] || m[3]) ? Math.round((Number(m[1] ?? 0) * 3600 + Number(m[2] ?? 0) * 60 + parseFloat(m[3] ?? '0')) * 1000) : null;
+  }
+  return { message: message.slice(0, 140), retryMs, daily: /per ?day|PerDay/i.test(body) };
+}
+
 /** Retry-After: soniya yoki HTTP sana. Millisekundga aylantiradi. */
 export function parseRetryAfter(value: string | null, now = Date.now()): number | null {
   if (!value) return null;
@@ -89,10 +110,13 @@ export class OpenAICompatProvider implements Provider {
     }
 
     if (!res.ok) {
-      const snippet = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
+      const raw = await res.text().catch(() => '');
+      const snippet = raw.replace(/\s+/g, ' ').slice(0, 200);
       const msg = `${this.id}: HTTP ${res.status} ${snippet}`;
       if (res.status === 429) {
-        throw new RateLimitError(msg, parseRetryAfter(res.headers.get('retry-after')) ?? 2000);
+        const q = parseQuotaError(raw);
+        const wait = parseRetryAfter(res.headers.get('retry-after')) ?? q.retryMs ?? 2000;
+        throw new RateLimitError(q.daily ? `${this.id}: kunlik kvota tugadi (${q.message})` : msg, wait, q.daily);
       }
       if (res.status === 401 || res.status === 403) throw new AuthError(msg);
       if (res.status === 408 || res.status >= 500) throw new TransientError(msg);

@@ -30,7 +30,44 @@ providers:
     models:
       # Sinov (2026-10-24, bepul kalit): 3.1-flash-lite ~2s, 3.5-flash ~5s, 3.7/3.8-flash ~53s (juda sekin)
       default: gemini-3.5-flash
-    limits: { rpm: 5, rpd: 100 }    # sahifa raqam bermaydi: AI Studio > rate limit'dan oling # VERIFY
+    # Haqiqiy 429 xabaridan (2026-10-24): bepul tarif KUNIGA 20 so'rov, MODEL bo'yicha va loyiha bo'yicha
+    # (gemini-3.5-flash aslida gemini-3.6-flash kvotasiga yozilgan). rpm: 5 hali taxmin # VERIFY
+    limits: { rpm: 5, rpd: 20 }
+  # Quyidagi 3 ta yozuv o'sha kalit, lekin ALOHIDA modellar: har birining o'z kunlik kvotasi bor.
+  # Asosiy model tugasa shularga o'tiladi (kvotalar 2026-10-24 da hammasida 20/kun deb taxmin qilingan # VERIFY).
+  - id: gemini-lite
+    kind: gemini
+    api_key_env: GEMINI_API_KEY
+    enabled: true
+    trains_on_data: true
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    reset_tz: America/Los_Angeles
+    json_mode: none
+    reasoning_effort: low
+    models: { default: gemini-3.1-flash-lite }   # sinovda ~2 s
+    limits: { rpm: 5, rpd: 20 }
+  - id: gemini-lite2
+    kind: gemini
+    api_key_env: GEMINI_API_KEY
+    enabled: true
+    trains_on_data: true
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    reset_tz: America/Los_Angeles
+    json_mode: none
+    reasoning_effort: low
+    models: { default: gemini-3.5-flash-lite }   # sinovda ~3 s
+    limits: { rpm: 5, rpd: 20 }
+  - id: gemini-preview
+    kind: gemini
+    api_key_env: GEMINI_API_KEY
+    enabled: true
+    trains_on_data: true
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    reset_tz: America/Los_Angeles
+    json_mode: none
+    reasoning_effort: low
+    models: { default: gemini-3-flash-preview }   # preview: o'zgarishi mumkin
+    limits: { rpm: 5, rpd: 20 }
   - id: groq
     kind: openai_compat
     api_key_env: GROQ_API_KEY
@@ -94,8 +131,8 @@ providers:
 
 # Rol bo'yicha fallback zanjiri (chapdan o'ngga). Yoqilmagan yoki kalitsiz provayderlar o'tkazib yuboriladi.
 chains:
-  mudir: [gemini, deepseek, openrouter, ollama]
-  uslubchi: [gemini, openrouter, ollama]
-  oqituvchi: [groq, cerebras, gemini, openrouter, ollama]
+  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, deepseek, openrouter, ollama]
+  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, openrouter, ollama]
+  oqituvchi: [groq, cerebras, gemini, gemini-lite, gemini-lite2, gemini-preview, openrouter, ollama]
 
 mock_chain: [mock, mock-b]

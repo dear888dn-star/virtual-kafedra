@@ -59,6 +59,15 @@ export class UsageStore {
     return t;
   }
 
+  /** Provayder kunlik kvota tugaganini aytdi: bugungi hisobni limitga tenglaymiz (qayta ishga tushganda ham eslab qolinadi). */
+  markExhausted(provider: string, timeZone: string, limit: number): void {
+    const t = this.today(provider, timeZone);
+    if (t.requests < limit) {
+      t.requests = limit;
+      this.save();
+    }
+  }
+
   private save(): void {
     if (!this.path) return;
     try {

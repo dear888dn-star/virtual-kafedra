@@ -240,7 +240,10 @@ export class Router {
           if (retryable) {
             const hint = e instanceof RateLimitError ? e.retryAfterMs : null;
             const wait = hint ?? this.backoff * 2 ** attempt;
-            if (attempt < this.retries && wait <= this.maxWait) {
+            // Kunlik kvota tugagan bo'lsa qayta urinishdan foyda yo'q: hisobni eslab qolamiz va keyingisiga o'tamiz
+            const dailyOut = e instanceof RateLimitError && e.daily;
+            if (dailyOut && s.limits?.rpd) this.o.usage.markExhausted(s.id, s.resetTz ?? 'UTC', s.limits.rpd);
+            if (!dailyOut && attempt < this.retries && wait <= this.maxWait) {
               this.emitWait(ctx, s, wait, e instanceof RateLimitError ? 'limiti' : 'javob bermadi');
               await this.o.sleep(Math.round(wait * this.scale));
               this.resume(ctx);
@@ -248,8 +251,8 @@ export class Router {
             }
             // Qayta urinishlar tugadi: provayderni sovitib, keyingisiga o'tamiz
             const cool = hint ?? this.backoff * 2 ** attempt;
-            if (e instanceof RateLimitError) s.limiter.coolDown(Math.min(cool, 10 * 60_000));
-            const reason = e instanceof RateLimitError ? 'limit (429)' : 'xato/timeout';
+            if (e instanceof RateLimitError) s.limiter.coolDown(Math.min(cool, 24 * 3_600_000));
+            const reason = dailyOut ? 'kunlik kvota tugadi' : e instanceof RateLimitError ? 'limit (429)' : 'xato/timeout';
             reasons.push(`${s.id}: ${reason}`);
             noteRetry(cool);
             if (next) this.emitSwitch(ctx, s, next, reason);
