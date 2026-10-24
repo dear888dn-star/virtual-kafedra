@@ -33,7 +33,7 @@ Foydali buyruqlar:
 3. `config/providers.yaml` da ishlatmoqchi bo'lgan provayderda `enabled: true` qiling va **model nomini tekshiring**.
 4. Serverni qayta ishga tushiring. Konsolda va "Sozlamalar" bo'limida qaysi provayder nega o'tkazib yuborilgani yoziladi.
 
-**Muhim:** real rejim uchun uchala rolda (mudir, uslubchi, o'qituvchi) kamida bitta ishlaydigan provayder bo'lishi kerak. Masalan, faqat Gemini hammasiga yetadi. Faqat Groq esa yetmaydi, chunki `chains` bo'limida u faqat o'qituvchi zanjirida.
+**Muhim:** real rejim uchun uchala rolda (mudir, uslubchi, o'qituvchi) kamida bitta ishlaydigan provayder bo'lishi kerak. Masalan, faqat Gemini hammasiga yetadi. Faqat Cerebras esa yetmaydi, chunki `chains` bo'limida u faqat o'qituvchi zanjirida.
 
 ### Kalit qayerdan olinadi
 Har bir xizmatning rasmiy hujjatida "API key" bo'limi bor. Boshlash uchun:

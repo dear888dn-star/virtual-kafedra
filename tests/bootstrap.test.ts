@@ -31,7 +31,8 @@ test('kalit bor va model berilgan: real rejim, zanjir rol bo\'yicha', () => {
 
 test('real rejimda ba\'zi rolga provayder yo\'q bo\'lsa aniq xato', () => {
   // groq faqat oqituvchi zanjirida; mudir zanjirida yo'q
-  assert.throws(() => boot({ ...base, cfg: cfgWith(['groq']), env: { GROQ_API_KEY: 'x' } }), /"mudir" roli uchun/);
+  // cerebras faqat oqituvchi zanjirida turadi
+  assert.throws(() => boot({ ...base, cfg: cfgWith(['cerebras']), env: { CEREBRAS_API_KEY: 'x' } }), /"mudir" roli uchun/);
 });
 
 test('MOCK=1 real kalit bo\'lsa ham mock\'ni majburlaydi', () => {

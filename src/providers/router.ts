@@ -208,7 +208,8 @@ export class Router {
         if (!avail.ok) {
           reasons.push(`${s.id}: ${why}`);
           noteRetry(avail.waitMs);
-          if (next) this.emitSwitch(ctx, s, next, why);
+          // Kunlik kvotasi allaqachon tugagan provayderni har chaqiruvda "almashtirish" deb jurnalga yozmaymiz
+          if (next && avail.reason !== 'rpd') this.emitSwitch(ctx, s, next, why);
           continue;
         }
       }

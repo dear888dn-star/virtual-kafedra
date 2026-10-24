@@ -71,13 +71,15 @@ providers:
   - id: groq
     kind: openai_compat
     api_key_env: GROQ_API_KEY
-    enabled: false
-    trains_on_data: unknown  # VERIFY
+    enabled: true
+    trains_on_data: unknown  # VERIFY: maxfiy ishlar uchun yaroqsiz hisoblanadi
     base_url: https://api.groq.com/openai/v1   # rasmiy hujjat, 2026-10-24
     json_mode: none          # # VERIFY
     models:
-      default: openai/gpt-oss-120b   # hujjat jadvalida bor # VERIFY (Free plan uchun mavjudligi)
-    limits: { rpm: 30, rpd: 1000, tpm: 8000 }   # hujjat jadvali (Developer plan bazasi), Free uchun hisobingizdan tekshiring # VERIFY
+      # Sinov (2026-10-24, sizning kalitingiz): gpt-oss-120b ~1.8 s, qwen3.8-27b ~0.8 s, gpt-oss-20b ~0.8 s; o'zbekcha yaxshi
+      default: openai/gpt-oss-120b
+    # Javob sarlavhalaridan tasdiqlangan: 1000 so'rov/kun, 8000 token/daqiqa (tpm tor: katta so'rovlar navbat kutadi). rpm: hujjat jadvali
+    limits: { rpm: 30, rpd: 1000, tpm: 8000 }
   - id: cerebras
     kind: openai_compat
     api_key_env: CEREBRAS_API_KEY
@@ -95,7 +97,9 @@ providers:
     trains_on_data: unknown  # VERIFY (modelga qarab farq qiladi)
     base_url: https://openrouter.ai/api/v1   # rasmiy hujjat, 2026-10-24
     json_mode: none          # # VERIFY
-    models: {}               # ":free" bilan tugaydigan model nomini openrouter.ai/models dan tanlang # VERIFY
+    # 2026-10-24: kalit /models da ishlaydi, lekin chatda 401 "User not found" (kalit yoki hisob muammosi). Yangi kalit oling.
+    # Tayyor bo'lgach model tanlang, masalan google/gemma-4-31b-it:free (ro'yxatda bor) va enabled: true qiling.
+    models: {}               # ":free" bilan tugaydigan model nomi # VERIFY
     limits: { rpm: 20, rpd: 50 }   # ":free" modellar, <10 kredit sotib olinganda; >=10 kreditda rpd 1000 # hujjat 2026-10-24
   - id: mistral
     kind: openai_compat
@@ -104,7 +108,9 @@ providers:
     trains_on_data: unknown  # VERIFY
     base_url: https://api.mistral.ai/v1   # endpoint: /v1/chat/completions (hujjat)
     json_mode: json_object   # hujjatda tasdiqlangan
-    models: {}               # model nomini docs.mistral.ai dan tanlang # VERIFY
+    # 2026-10-24: kalit /models da ishlaydi, lekin chatda 429 va "limit-req-minute=0": bepul tarif (Experiment) faollashtirilmagan.
+    # console.mistral.ai da tarifni faollashtiring, keyin model (mistral-small-latest) yozing va enabled: true qiling.
+    models: {}               # model nomi # VERIFY
     limits: {}               # tarif limitlari hujjatda topilmadi, console'dan oling # VERIFY
   - id: deepseek
     kind: openai_compat
@@ -131,8 +137,9 @@ providers:
 
 # Rol bo'yicha fallback zanjiri (chapdan o'ngga). Yoqilmagan yoki kalitsiz provayderlar o'tkazib yuboriladi.
 chains:
-  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, deepseek, openrouter, ollama]
-  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, openrouter, ollama]
+  # O'qituvchilar Groq'da yozadi, mudir va uslubchi avval Gemini'da ishlaydi: boshqa model tekshirgani sifatni oshiradi.
+  mudir: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, deepseek, openrouter, ollama]
+  uslubchi: [gemini, gemini-lite, gemini-lite2, gemini-preview, groq, openrouter, ollama]
   oqituvchi: [groq, cerebras, gemini, gemini-lite, gemini-lite2, gemini-preview, openrouter, ollama]
 
 mock_chain: [mock, mock-b]
