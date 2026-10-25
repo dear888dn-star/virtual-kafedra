@@ -90,3 +90,19 @@ test('deckToMarkdown: uslubchi o\'qiydigan matnda slaydlar sanaladi', () => {
   assert.match(md, /Spiker uchun izoh/);
   assert.match(md, /\*\*12%\*\*/);
 });
+
+test('juda qisqa taqdimot (1-2 slayd) titul/yakunsiz ham qabul qilinadi va .pptx yasaladi', async () => {
+  const two = {
+    title: 'Innovatsiyalar',
+    slides: [
+      { layout: 'bullets', title: 'Asosiy yo\'nalishlar', bullets: ['Raqamli xizmatlar', 'Sun\'iy intellekt', 'Mobil to\'lovlar'] },
+      { layout: 'stats', title: 'Raqamlarda (namuna)', stats: [{ value: '45%', label: 'onlayn bron' }, { value: '3x', label: 'o\'sish' }] },
+    ],
+  };
+  const parsed = SlideDeckSchema.safeParse(two);
+  assert.equal(parsed.success, true);
+  assert.equal(SlideDeckSchema.safeParse({ title: 'Bitta', slides: [two.slides[0]] }).success, true);
+  assert.equal(SlideDeckSchema.safeParse({ title: 'Bo\'sh', slides: [] }).success, false);
+  const files = unzipSync(await buildPptx(parsed.data as SlideDeck));
+  assert.equal(Object.keys(files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f)).length, 2);
+});

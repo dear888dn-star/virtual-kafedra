@@ -132,6 +132,8 @@ export class Orchestrator {
   private state: RunState | null = null;
   private locks = new Map<string, Promise<unknown>>();
   private fatal: Error | null = null;
+  /** Oxirgi vazifa xatosi: hamma vazifa bajarilmasa, sababini foydalanuvchiga ko'rsatish uchun */
+  private lastTaskError = '';
   /** Joriy ishda yuborilgan model so'rovlari soni va foydalanuvchi to'xtatganmi */
   private calls = 0;
   private cancelled = false;
@@ -218,6 +220,7 @@ export class Orchestrator {
 
   private begin(runId: string, req: RunRequest, resumed: boolean): void {
     this.fatal = null;
+    this.lastTaskError = '';
     this.calls = 0;
     this.cancelled = false;
     this.snapshot = { runId, status: 'running', task: req.task, plan: [], deliverables: {}, final: null, reviews: {} };
@@ -465,6 +468,7 @@ export class Orchestrator {
             this.fatal ??= e;
           }
           failed.add(t.id);
+          this.lastTaskError = (e as Error).message.slice(0, 300);
           this.emitState(t.assignee, 'error', `Xato: ${short((e as Error).message, 50)}`, t.id);
         })
         .finally(() => {
@@ -495,7 +499,7 @@ export class Orchestrator {
     if (this.fatal) throw this.fatal;
 
     // 3) Yig'ish
-    if (finished.size === 0) throw new Error('Birorta vazifa ham bajarilmadi');
+    if (finished.size === 0) throw new Error(`Birorta vazifa ham bajarilmadi${this.lastTaskError ? `: ${this.lastTaskError}` : ''}`);
     this.emitState('mudir', 'writing', "Yakuniy hujjatni yig'yapman…");
     // Xulosa modelsiz, ma'lumotlardan yig'iladi: aniq, takrorlanadigan va bitta so'rov tejaladi.
     const summary = this.buildSummary(plan.tasks, finished, failed);
@@ -641,6 +645,7 @@ export class Orchestrator {
         text = this.snapshot.deliverables[t.id]!; // davom ettirish: yozilgan, tekshiruv kutilgan
       } else {
         const attempt = ts.attempt;
+        try {
         text = await this.withAgent(t.assignee, async () => {
           this.emitState(t.assignee, 'writing', attempt ? "Izohlar bo'yicha tuzatyapman…" : 'Yozyapman…', t.id);
           const userMsg = [
@@ -682,6 +687,28 @@ export class Orchestrator {
           this.emitState(t.assignee, 'idle', 'Uslubchiga topshirdim', t.id);
           return out;
         });
+        } catch (e) {
+          // Tuzatish urinishi yaroqli natija bermadi: avvalgi yaroqli variantni ogohlantirish bilan qabul qilamiz (ish yo'qolmasin)
+          const prev = this.snapshot.deliverables[t.id];
+          if (e instanceof JsonParseError && attempt > 0 && prev) {
+            const last = this.snapshot.reviews[t.id]?.filter(Boolean).at(-1);
+            ts.status = 'done';
+            ts.score = last?.score ?? 0;
+            ts.warned = true;
+            this.saveState();
+            this.bus.emit({
+              type: 'review_result',
+              agent: 'uslubchi',
+              to: t.assignee,
+              task_id: t.id,
+              text: "Tuzatib bo'lmadi: oldingi variant ogohlantirish bilan qabul qilindi",
+              data: { verdict: 'revise', score: ts.score, issues: last?.issues ?? [], attempt, accepted: true, escalated: true, unreviewed: false },
+            });
+            this.emitState(t.assignee, 'done', 'Oldingi variant qoldirildi (ogohlantirish)', t.id);
+            return;
+          }
+          throw e;
+        }
         this.snapshot.deliverables[t.id] = text;
         this.save(`deliverables/${t.id}.md`, text);
         ts.status = 'written';

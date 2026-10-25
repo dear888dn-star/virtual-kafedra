@@ -48,6 +48,7 @@ deliverables:
       - closing: title, bullets[] (oxirgi slayd, majburiy)
       Har slaydga "notes" (spiker uchun 1-3 jumla) va kerak bo'lsa "visual" (tasvir g'oyasi, matn bilan) yoz.
       Jami slaydlar soni: topshiriqda N slayd aytilgan bo'lsa, titul va yakuniy slaydlar ham shu songa kiradi, aniq N ta bo'lsin.
+      Juda qisqa taqdimot (jami 1-2 slayd) so'ralsa, titul va yakuniy slayd QO'YMA: hamma slayd mazmunli bo'lsin (maket ixtiyoriy, masalan bullets, stats, two_column).
       Maketlarni almashtirib tur: ketma-ket ikkita bir xil maket qo'yma; bandlar maketidan ko'p foydalanma.
   glossary:
     title: Atamalar glossariysi

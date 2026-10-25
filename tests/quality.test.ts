@@ -246,3 +246,92 @@ test("hech narsa o'zidan ishga tushmaydi: orkestrator faqat start() va resume() 
   assert.equal(log.reqs.length, 0);
   assert.equal(o.status, 'idle');
 });
+
+test("2 slaydli taqdimot so'ralsa: lint va sxema buni qabul qiladi, ish muvaffaqiyatli tugaydi", async () => {
+  const deck = JSON.stringify({
+    title: 'Innovatsiyalar',
+    slides: [
+      { layout: 'bullets', title: "Yo'nalishlar", bullets: ['Raqamli xizmatlar', "Sun'iy intellekt"] },
+      { layout: 'stats', title: 'Raqamlarda (namuna)', stats: [{ value: '45%', label: 'onlayn bron' }, { value: '3x', label: "o'sish" }] },
+    ],
+  });
+  const provider: Provider = {
+    id: 'fake',
+    async complete(req) {
+      const msg = req.messages[0]!.content;
+      let text: string;
+      if (/Reja tuz/.test(msg)) {
+        text = JSON.stringify({ tasks: [{ id: 'T1', assignee: 't4', title: 'Taqdimot', instructions: '2 ta slayd tayyorlang', deliverable_type: 'slides', depends_on: [], acceptance_criteria: [] }] });
+      } else if (req.json && !/ko'rsatmasi \(slides\)/.test(msg)) {
+        text = '{"verdict":"approve","score":9,"issues":[]}';
+      } else {
+        text = deck;
+      }
+      return { text, usage: { inputTokens: 1, outputTokens: 1 }, provider: 'fake', model: 'm' };
+    },
+  };
+  const { o, bus } = orch(provider);
+  o.start({ ...REQ, task: '2 betlik slayd tayyorlang' });
+  await o.done;
+  assert.equal(o.status, 'finished', bus.all().at(-1)?.text);
+  assert.equal(o.getDeck('T1')?.slides.length, 2);
+});
+
+test("hamma vazifa bajarilmasa: sabab foydalanuvchiga ko'rsatiladi (faqat 'bajarilmadi' emas)", async () => {
+  const provider: Provider = {
+    id: 'fake',
+    async complete(req) {
+      const msg = req.messages[0]!.content;
+      const text = /Reja tuz/.test(msg)
+        ? JSON.stringify({ tasks: [{ id: 'T1', assignee: 't4', title: 'Taqdimot', instructions: '3 ta slayd', deliverable_type: 'slides', depends_on: [], acceptance_criteria: [] }] })
+        : 'bu JSON emas';
+      return { text, usage: { inputTokens: 1, outputTokens: 1 }, provider: 'fake', model: 'm' };
+    },
+  };
+  const { o, bus } = orch(provider);
+  o.start({ ...REQ, task: '3 slayd' });
+  await o.done;
+  assert.equal(o.status, 'failed');
+  assert.match(bus.all().at(-1)!.data?.error as string, /Birorta vazifa ham bajarilmadi: .*JSON/);
+});
+
+test("slayd soni 'betlik' va 'slaydlik' shakllaridan ham olinadi", () => {
+  assert.equal(expectedCountFor('slides', "2 betlik (slaydlik) taqdimot tayyorlang"), 2);
+  assert.equal(expectedCountFor('slides', '10 ta slayd'), 10);
+  assert.equal(expectedCountFor('slides', '5 sahifalik prezentatsiya'), 5);
+  assert.equal(lintDeliverable('slides', '## Slayd 1: a\n- b\n\n## Slayd 2: c\n- d\n' + 'matn '.repeat(20), { expectedCount: 2 }).length, 0);
+});
+
+test("tuzatish urinishi yaroqsiz JSON qaytarsa: oldingi yaroqli taqdimot ogohlantirish bilan qabul qilinadi, ish yo'qolmaydi", async () => {
+  const deck = JSON.stringify({
+    title: 'Innovatsiyalar',
+    slides: [
+      { layout: 'bullets', title: "Yo'nalishlar", bullets: ['Raqamli xizmatlar', "Sun'iy intellekt"] },
+      { layout: 'stats', title: 'Raqamlarda (namuna)', stats: [{ value: '45%', label: 'onlayn bron' }, { value: '3x', label: "o'sish" }] },
+    ],
+  });
+  let writes = 0;
+  const provider: Provider = {
+    id: 'fake',
+    async complete(req) {
+      const msg = req.messages[0]!.content;
+      let text: string;
+      if (/Reja tuz/.test(msg)) {
+        text = JSON.stringify({ tasks: [{ id: 'T1', assignee: 't4', title: 'Taqdimot', instructions: '2 ta slayd tayyorlang', deliverable_type: 'slides', depends_on: [], acceptance_criteria: [] }] });
+      } else if (req.json && !/ko'rsatmasi \(slides\)/.test(msg)) {
+        text = '{"verdict":"revise","score":6,"issues":[{"place":"2-slayd","problem":"raqamlar manbasiz","fix":"[MANBA KERAK] qo\'ying"}]}';
+      } else {
+        writes++;
+        text = writes === 1 ? deck : 'bu JSON emas';
+      }
+      return { text, usage: { inputTokens: 1, outputTokens: 1 }, provider: 'fake', model: 'm' };
+    },
+  };
+  const { o, bus } = orch(provider);
+  o.start({ ...REQ, task: '2 slayd' });
+  await o.done;
+  assert.equal(o.status, 'finished', bus.all().at(-1)?.text);
+  assert.equal(o.getDeck('T1')?.slides.length, 2, 'oldingi yaroqli taqdimot saqlanishi kerak');
+  assert.match(o.getSnapshot().final ?? '', /ogohlantirish bilan/);
+  assert.ok(bus.all().some((e) => e.type === 'review_result' && /oldingi variant/.test(e.text ?? '')));
+});

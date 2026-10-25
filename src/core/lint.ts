@@ -24,7 +24,7 @@ export function expectedCountFor(type: string, instructions: string): number | u
       : type === 'practice'
         ? /(\d{1,3})\s*(?:ta\s*)?(?:masala|mashq|topshiriq)/i
         : type === 'slides'
-          ? /(\d{1,3})\s*(?:ta\s*)?slayd/i
+          ? /(\d{1,3})\s*(?:ta\s*)?(?:slayd|betlik|sahifalik|varaq)/i
           : null;
   const m = re ? instructions.match(re) : null;
   const n = m ? Number(m[1]) : NaN;
@@ -88,7 +88,8 @@ export function lintDeliverable(type: string, text: string, opts: LintOptions = 
     }
     case 'slides': {
       const slides = (t.match(/^\s*#{2,3}\s*(?:slayd|slide|слайд)\s*\d+/gim) ?? []).length;
-      if (slides < 3) issues.push({ place: 'tuzilma', problem: `${slides} ta slayd topildi, kamida 3 ta kerak`, fix: '## Slayd 1: Sarlavha ko\'rinishida yozing' });
+      const minSlides = Math.min(3, opts.expectedCount ?? 3);
+      if (slides < minSlides) issues.push({ place: 'tuzilma', problem: `${slides} ta slayd topildi, kamida ${minSlides} ta kerak`, fix: '## Slayd 1: Sarlavha ko\'rinishida yozing' });
       else issues.push(...countMismatch('slaydlar', 'Slaydlar', slides, opts.expectedCount));
       break;
     }

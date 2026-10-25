@@ -59,9 +59,11 @@ export const SlideDeckSchema = z
     title: str(140),
     subtitle: str(220).optional(),
     theme: z.enum(THEME_IDS).optional(),
-    slides: z.array(SlideSchema).min(3).max(40),
+    slides: z.array(SlideSchema).min(1).max(40),
   })
   .superRefine((d, ctx) => {
+    // Juda qisqa taqdimotda (1-2 slayd) titul va yakun slaydlari shart emas: hamma slayd mazmunli bo'ladi
+    if (d.slides.length < 3) return;
     if (d.slides[0]?.layout !== 'title') ctx.addIssue({ code: 'custom', message: "birinchi slayd layout: 'title' bo'lishi kerak" });
     if (d.slides[d.slides.length - 1]?.layout !== 'closing') ctx.addIssue({ code: 'custom', message: "oxirgi slayd layout: 'closing' bo'lishi kerak" });
   });
