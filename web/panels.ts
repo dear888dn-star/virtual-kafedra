@@ -3,26 +3,12 @@ import type { SlideDeck } from '../src/shared/slides';
 import { THEME_IDS, THEMES, isThemeId, type ThemeId } from '../src/shared/themes';
 import { renderMarkdown } from './render';
 import { renderDeck } from './slides';
+import type { Book, SourceMode } from '../src/shared/sources';
+import { h } from './dom';
+import { sourcePicker, type SearchOutcome } from './sources';
 import type { CardStatus, Store } from './store';
 
-type Child = Node | string | null | undefined;
-
-/** Kichik DOM yordamchisi. Matn doim textContent orqali qo'yiladi (XSS'dan xavfsiz). */
-export function h<K extends keyof HTMLElementTagNameMap>(
-  tag: K,
-  attrs: Record<string, string | boolean | ((e: Event) => void)> = {},
-  ...children: Child[]
-): HTMLElementTagNameMap[K] {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (typeof v === 'function') el.addEventListener(k.replace(/^on/, ''), v);
-    else if (typeof v === 'boolean') {
-      if (v) el.setAttribute(k, '');
-    } else el.setAttribute(k, v);
-  }
-  for (const c of children) if (c != null) el.append(c);
-  return el;
-}
+export { h };
 
 export interface Panel {
   id: string;
@@ -67,7 +53,8 @@ const PII_LABELS: Record<string, string> = {
 };
 
 export interface TaskApi {
-  submit(body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string }): Promise<SubmitResult>;
+  submit(body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string; source_mode?: SourceMode; books?: Book[] }): Promise<SubmitResult>;
+  searchBooks(task: string): Promise<SearchOutcome>;
   listRuns(): Promise<RunItem[]>;
   resume(id: string): Promise<string | null>;
   stop(): Promise<void>;
@@ -100,18 +87,19 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
   const sensInfo = h('div', { class: 'note', hidden: true });
   const piiBox = h('div', { class: 'note warn', hidden: true, role: 'alert' });
   const failNote = h('div', { class: 'note err', hidden: true, role: 'alert' });
-  const mat = h('textarea', { id: 'task-material', placeholder: "Konspekt, sillabus yoki mavzu bo'yicha manba matn. Model faktlarni shundan oladi.", style: 'min-height:90px' });
-  const matInfo = h('p', { class: 'muted' });
-  const matFile = h('input', { type: 'file', accept: '.txt,.md,.csv,text/plain,text/markdown', 'aria-label': 'Manba faylini tanlash' });
-  const matBox = h('details', { class: 'material' }, h('summary', {}, 'Manba material (ixtiyoriy)'), mat, h('div', { class: 'row' }, matFile, h('button', { class: 'btn small ghost', type: 'button', onclick: () => { mat.value = ''; matFile.value = ''; updateMat(); } }, 'Tozalash')), matInfo);
   let sampleIdx = 0;
+  const picker = sourcePicker({
+    getTask: () => ta.value,
+    search: (task) => api.searchBooks(task),
+    maxMaterial: () => store.config?.limits.max_material_chars ?? 300000,
+  });
 
   const el = h(
     'section',
     { class: 'panel' },
     h('label', { for: 'task-text' }, 'Topshiriq'),
     ta,
-    matBox,
+    picker.el,
     h('div', { class: 'row' }, h('div', {}, h('label', { for: 'task-lang' }, 'Til'), lang), h('label', { class: 'check', for: 'task-sensitive' }, sens, 'Maxfiy topshiriq')),
     warn,
     sensInfo,
@@ -155,27 +143,6 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
   ta.addEventListener('input', onInput);
   sens.addEventListener('change', onInput);
 
-  const MAT_LIMIT = 30000;
-  const updateMat = () => {
-    const n = mat.value.length;
-    const max = store.config?.limits.max_material_chars ?? MAT_LIMIT;
-    matInfo.textContent = n ? `${n} belgi${n > max ? ` (ruxsat etilgan ${max} dan ortiq: qisqartiring)` : ''}. Matn tashqi AI xizmatiga yuboriladi.` : ".txt yoki .md fayl yuklang yoki matnni shu yerga qo'ying.";
-    matInfo.className = n > max ? 'note err' : 'muted';
-  };
-  mat.addEventListener('input', updateMat);
-  matFile.addEventListener('change', async () => {
-    const f = matFile.files?.[0];
-    if (!f) return;
-    if (f.size > 400_000) {
-      matInfo.textContent = 'Fayl juda katta (400 KB gacha).';
-      return;
-    }
-    mat.value = await f.text();
-    matBox.open = true;
-    updateMat();
-  });
-  updateMat();
-
   const doSend = async () => {
     err.hidden = true;
     const text = ta.value.trim();
@@ -184,13 +151,20 @@ export function taskPanel(store: Store, api: TaskApi): Panel {
       err.hidden = false;
       return;
     }
+    const bad = picker.validate();
+    if (bad) {
+      err.textContent = bad;
+      err.hidden = false;
+      picker.el.scrollIntoView({ block: 'center' });
+      return;
+    }
     send.disabled = true;
     piiBox.hidden = true;
     await attempt(false);
     send.disabled = store.status === 'running';
   };
   const attempt = async (confirm: boolean) => {
-    const res = await submit({ task: ta.value.trim(), sensitive: sens.checked, language: lang.value, confirm_pii: confirm || undefined, material: mat.value.trim() || undefined });
+    const res = await submit({ task: ta.value.trim(), sensitive: sens.checked, language: lang.value, confirm_pii: confirm || undefined, ...(picker.get() ?? {}) });
     if (res.ok) return;
     if (res.pii?.length) {
       piiBox.replaceChildren(

@@ -15,7 +15,7 @@ export function readAdminSettings(
   return {
     kafedra: { name: cfg.kafedra.kafedra.name, audience: cfg.kafedra.kafedra.audience },
     limits: { ...cfg.kafedra.limits },
-    agents: cfg.kafedra.agents.map((a) => ({ id: a.id, role: a.role, name: a.name, title: a.title, color: a.color })),
+    agents: cfg.kafedra.agents.map((a) => ({ id: a.id, gender: a.gender, role: a.role, name: a.name, title: a.title, color: a.color })),
     providers: cfg.providers.providers.map((p) => ({
       id: p.id,
       kind: p.kind,
@@ -102,6 +102,10 @@ export function applyAdminUpdate(u: AdminUpdate, cfg: AppConfig, root = ROOT): A
     kDoc.setIn(['agents', i, 'name'], cleanText(a.name, `${a.id} ismi`, 60));
     kDoc.setIn(['agents', i, 'title'], cleanText(a.title, `${a.id} lavozimi`, 60));
     kDoc.setIn(['agents', i, 'color'], cleanText(a.color, `${a.id} rangi`, 7));
+    if (a.gender !== undefined) {
+      if (a.gender !== 'male' && a.gender !== 'female') throw new AdminError(`${a.id} jinsi: male yoki female bo'lishi kerak`);
+      kDoc.setIn(['agents', i, 'gender'], a.gender);
+    }
   }
 
   const provIds = cfg.providers.providers.map((p) => p.id);

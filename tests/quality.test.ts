@@ -144,7 +144,8 @@ test('manba material teglarda planga (qisqartirilgan) va o\'qituvchiga beriladi,
   assert.match(plan, /<manba_material>/);
   assert.ok(plan.length < material.length, 'rejaga to\'liq material berilmasligi kerak');
   const work = log.work[0]!;
-  assert.equal((work.match(/<manba_material>/g) ?? []).length, 1);
+  // Teg qatori alohida (izohdagi eslatma emas): foydalanuvchi tegni yopib qo'ya olmaydi
+  assert.equal((work.match(/^<manba_material>$/gm) ?? []).length, 1);
   assert.equal((work.match(/<\/manba_material>/g) ?? []).length, 1);
   assert.match(work, /Talab qonuni/);
   assert.match(log.reqs[0]!.system, /manba_material/);

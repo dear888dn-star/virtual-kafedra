@@ -18,6 +18,7 @@ export interface AdminProvider {
 
 export interface AdminAgent {
   id: string;
+  gender: 'male' | 'female';
   role: 'mudir' | 'uslubchi' | 'oqituvchi';
   name: string;
   title: string;
@@ -48,7 +49,7 @@ export interface AdminSettings {
 export interface AdminUpdate {
   kafedra: { name: string; audience: string };
   limits: AdminLimits;
-  agents: { id: string; name: string; title: string; color: string }[];
+  agents: { id: string; name: string; title: string; color: string; gender?: 'male' | 'female' }[];
   providers: {
     id: string;
     enabled: boolean;

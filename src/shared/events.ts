@@ -45,6 +45,7 @@ export type AgentRole = 'mudir' | 'uslubchi' | 'oqituvchi';
 
 export interface AgentInfo {
   id: string;
+  gender: 'male' | 'female';
   name: string;
   role: AgentRole;
   title: string;

@@ -60,3 +60,11 @@ Yangilangan: 2026-10-24 (2-bosqich)
 - **NotebookLM:** faqat NotebookLM Enterprise API (Google Cloud, alpha, 2025-09 dan) ochiq; iste'molchi/Gemini API orqali yo'q. Notebooklm-py va shunga o'xshash loyihalar hujjatlanmagan ichki endpointlardan foydalanadi, shuning uchun ishlatilmadi. Manba asosidagi ish `<manba_material>` bilan bajariladi.
 - **.pptx kutubxonasi:** `pptxgenjs` 4.0.1 (MIT). Fayl tuzilishi (zip, slaydlar soni, izohlar, jadval) testlar bilan tekshirilgan; PowerPoint/LibreOffice'da vizual ochib tekshirilmagan (kompyuterda o'rnatilmagan). Brauzerdagi ko'rinish bir xil maket mantig'ida chiziladi, lekin piksel-aniq nusxa emas.
 - **Rasmlar:** Gemini rasm modellari (kvotasi va bepul tarifdagi ruxsati tekshirilmagan) hozircha ishlatilmaydi.
+
+## Manba qidirish va 3D ofis (2026-10-25)
+- **Open Library** (openlibrary.org/search.json): kalitsiz ishlaydi, tekshirildi: inglizcha so'rovlarga ko'p natija beradi, kirill va o'zbekcha so'rovlarga deyarli yo'q. Shuning uchun qidiruv so'rovlari asosan inglizcha tuziladi. Ulanish vaqti-vaqti bilan sekin (15 s gacha).
+- **Google Books** API kalitsiz chaqiruvlarda 429 qaytardi (anonim kvota); u ixtiyoriy manba sifatida urinib ko'riladi, xato e'tiborsiz qoldiriladi.
+- Qidiruv natijalari faqat katalogda topilgan kitoblar; model "taniqli kitoblar" ro'yxati ham katalogdan tekshiriladi. Kitobning *ichidagi* ma'lumotlarning to'g'riligini tizim tekshira olmaydi (matn berilmasa).
+- **PDF:** `unpdf` bilan matn qatlami o'qiladi; OCR yo'q (skaner qilingan PDF rad etiladi).
+- **3D:** `three` 0.186 (MIT), brauzer WebGL2 bilan tekshirildi (AMD grafika, ANGLE). Personajlar kod bilan quriladi (tashqi model/rasm yo'q), litsenziya muammosi yo'q. Past quvvatli qurilmalarda sekin bo'lishi mumkin: "Animatsiya" tugmasi harakatni o'chiradi.
+- Jinslar konfigda aniq belgilangan (standart qiymatlar ismga qarab qo'yilgan, o'zgartirish mumkin).

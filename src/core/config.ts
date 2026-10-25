@@ -70,6 +70,7 @@ export function toPublicConfig(cfg: AppConfig, mock: boolean, problems: string[]
     limits: cfg.kafedra.limits,
     agents: cfg.kafedra.agents.map((a) => ({
       id: a.id,
+      gender: a.gender,
       name: a.name,
       role: a.role,
       title: a.title,

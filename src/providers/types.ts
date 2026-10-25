@@ -5,7 +5,7 @@ export interface ChatMessage {
 
 /** Mock adapter kimligini va vazifasini bilishi uchun; haqiqiy adapterlar e'tibor bermaydi. */
 export interface CallMeta {
-  purpose: 'plan' | 'work' | 'review' | 'assemble';
+  purpose: 'plan' | 'work' | 'review' | 'assemble' | 'sources';
   agentId: string;
   deliverableType?: string;
   taskTitle?: string;

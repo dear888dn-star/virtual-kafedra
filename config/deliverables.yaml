@@ -34,7 +34,7 @@ deliverables:
       - Spiker uchun izohlar bor
     guide: |
       Natijani FAQAT JSON ko'rinishida qaytar (``` belgilarisiz). Tuzilma:
-      {"title":"Taqdimot nomi","subtitle":"qisqa tavsif","theme":"okean|quyosh|zumrad|binafsha|grafit",
+      {"title":"Taqdimot nomi","subtitle":"qisqa tavsif","theme":"okean|quyosh|zumrad|binafsha|grafit|dengiz|atirgul|oltin|sahro|tun",
        "slides":[{"layout":"title","title":"...","subtitle":"..."}, ... ,{"layout":"closing","title":"Rahmat!","bullets":["asosiy xulosa"]}]}
       Slayd maketlari (layout) va ularning maydonlari:
       - title: title, subtitle (birinchi slayd, majburiy)

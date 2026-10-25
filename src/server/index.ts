@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { build } from 'esbuild';
 import express, { type NextFunction, type Request, type Response } from 'express';
@@ -8,6 +8,7 @@ import { ROOT, toPublicConfig } from '../core/config';
 import { markdownToDocx } from '../export/docx';
 import { buildPptx } from '../export/pptx';
 import { isThemeId } from '../shared/themes';
+import { PdfError, extractPdfText } from '../core/pdf';
 import { detectPii } from '../privacy/pii';
 import { SensitiveRoutingError } from '../providers/types';
 import { RunRequest } from '../schemas';
@@ -45,7 +46,7 @@ server.use((req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   next();
 });
-server.use(express.json({ limit: '400kb' }));
+server.use(express.json({ limit: '3mb' }));
 
 server.get('/', (_req, res) => res.sendFile(join(webDir, 'index.html')));
 server.get('/style.css', (_req, res) => res.sendFile(join(webDir, 'style.css')));
@@ -53,21 +54,40 @@ server.get('/admin', (_req, res) => res.sendFile(join(webDir, 'admin.html')));
 server.get('/icon.svg', (_req, res) => res.sendFile(join(webDir, 'icon.svg')));
 server.get('/admin.js', (_req, res) => bundle('admin.ts', res));
 server.get('/app.js', (_req, res) => bundle('main.ts', res));
+/** Brauzer paketi: fayllar o'zgarmaguncha qayta yig'ilmaydi (three.js tufayli birinchi yig'ish biroz vaqt oladi). */
+const bundleCache = new Map<string, { stamp: number; text: string }>();
+function sourceStamp(): number {
+  let max = 0;
+  for (const dir of [webDir, join(ROOT, 'src', 'shared')]) {
+    for (const f of readdirSync(dir)) {
+      if (f.endsWith('.ts')) max = Math.max(max, statSync(join(dir, f)).mtimeMs);
+    }
+  }
+  return max;
+}
+
 async function bundle(entry: string, res: Response): Promise<void> {
   try {
-    const out = await build({
-      entryPoints: [join(webDir, entry)],
-      bundle: true,
-      write: false,
-      format: 'esm',
-      target: 'es2022',
-      sourcemap: 'inline',
-      logLevel: 'silent',
-    });
-    res.type('application/javascript').send(out.outputFiles[0]!.text);
+    const stamp = sourceStamp();
+    let hit = bundleCache.get(entry);
+    if (!hit || hit.stamp !== stamp) {
+      const out = await build({
+        entryPoints: [join(webDir, entry)],
+        bundle: true,
+        write: false,
+        format: 'esm',
+        target: 'es2022',
+        minify: true,
+        legalComments: 'none',
+        logLevel: 'silent',
+      });
+      hit = { stamp, text: out.outputFiles[0]!.text };
+      bundleCache.set(entry, hit);
+    }
+    res.type('application/javascript').send(hit.text);
   } catch (e) {
     console.error(e);
-    res.status(500).type('text/plain').send('Frontend yig\'ilmadi: ' + (e as Error).message);
+    res.status(500).type('text/plain').send("Frontend yig'ilmadi: " + (e as Error).message);
   }
 }
 
@@ -103,7 +123,11 @@ server.get('/api/run', (_req, res) => res.json(app.orchestrator.getSnapshot()));
 server.post('/api/runs', (req, res) => {
   const parsed = RunRequest.safeParse(req.body);
   if (!parsed.success) {
-    res.status(400).json({ error: "Topshiriq matni kamida 3 belgi bo'lishi kerak" });
+    const issue = parsed.error.issues[0];
+    const where = issue?.path.join('.') ?? '';
+    res.status(400).json({
+      error: !where || where === 'task' ? "Topshiriq matni kamida 3 belgi bo'lishi kerak" : `So'rov noto'g'ri (${where}): ${issue?.message ?? ''}`,
+    });
     return;
   }
   const max = app.cfg.kafedra.limits.max_input_chars;
@@ -113,6 +137,14 @@ server.post('/api/runs', (req, res) => {
   }
   if (app.orchestrator.status === 'running') {
     res.status(409).json({ error: 'Boshqa topshiriq bajarilmoqda' });
+    return;
+  }
+  // Manba tanlash majburiy: kitob(lar), o'z matni yoki aniq "manba talab qilinmaydi"
+  if (parsed.data.source_mode !== 'none' && !(parsed.data.books?.length || parsed.data.material?.trim())) {
+    res.status(422).json({
+      code: 'source_required',
+      error: "Manbani tanlang: kitob ko'rsating, mos kitoblarni qidirtiring yoki \"Manba kerak emas\" ni yoqing.",
+    });
     return;
   }
   const maxMat = app.cfg.kafedra.limits.max_material_chars;
@@ -187,6 +219,44 @@ server.get('/api/run/export.docx', (req, res) => {
 // Ishlayotgan topshiriqni to'xtatish: yangi model so'rovi yuborilmaydi, holat saqlanadi
 server.post('/api/run/stop', (_req, res) => {
   res.json({ stopping: app.orchestrator.cancel() });
+});
+
+// Mavzu bo'yicha kitob qidirish va tavsiya qilish (bitta model so'rovi va ochiq kataloglar). Foydalanuvchi bosganda ishlaydi.
+// PDF kitobdan matn olish (xom fayl yuboriladi; matn qatlami bo'lishi kerak). Natija brauzerdagi "kitob matni" maydoniga tushadi.
+server.post('/api/extract', express.raw({ type: () => true, limit: '40mb' }), async (req, res) => {
+  const body = req.body;
+  if (!Buffer.isBuffer(body) || body.length === 0) {
+    res.status(400).json({ error: 'Fayl yuborilmadi.' });
+    return;
+  }
+  try {
+    const r = await extractPdfText(new Uint8Array(body), app.cfg.kafedra.limits.max_material_chars);
+    res.json(r);
+  } catch (e) {
+    res.status(e instanceof PdfError ? 422 : 500).json({ error: e instanceof Error ? e.message : String(e) });
+  }
+});
+
+let searchingSources = false;
+server.post('/api/sources/search', async (req, res) => {
+  const task = typeof req.body?.task === 'string' ? req.body.task.trim() : '';
+  if (task.length < 3 || task.length > app.cfg.kafedra.limits.max_input_chars) {
+    res.status(400).json({ error: 'Avval topshiriq matnini yozing (kitob qidirish mavzuga qarab ishlaydi).' });
+    return;
+  }
+  if (searchingSources) {
+    res.status(409).json({ error: 'Kitob qidirilmoqda, bir oz kuting.' });
+    return;
+  }
+  searchingSources = true;
+  try {
+    res.json(await app.orchestrator.suggestSources(task));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    res.status(502).json({ error: `Kitob qidirib bo'lmadi: ${msg.slice(0, 160)}` });
+  } finally {
+    searchingSources = false;
+  }
 });
 
 server.get('/api/runs', (_req, res) => res.json(app.orchestrator.listRuns()));

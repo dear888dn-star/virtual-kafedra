@@ -7,7 +7,11 @@ import { Plan, Review, RunRequest, type PlanTask } from '../schemas';
 import type { AgentState, PlanTaskInfo, ReviewInfo, RunSnapshot } from '../shared/events';
 import { SlideDeckSchema } from '../schemas/slides';
 import { deckToMarkdown, type SlideDeck } from '../shared/slides';
+import { formatBooks, type Book } from '../shared/sources';
 import { skillsOf, type AppConfig } from './config';
+import { extractJson } from './json';
+import { selectRelevant } from './relevance';
+import { searchSources, type SourceSearchResult } from './sources';
 import { expectedCountFor, lintDeliverable } from './lint';
 import type { EventBus } from './events';
 
@@ -75,16 +79,43 @@ const LANG_NAMES: Record<string, string> = {
   multi: "uch tilda: o'zbek (lotin), rus va ingliz",
 };
 
-const MAX_TOKENS = { plan: 2500, work: 4096, review: 1200, assemble: 700 } as const;
+const MAX_TOKENS = { plan: 2500, work: 4096, review: 1200, assemble: 700, sources: 900 } as const;
 /** Bog'liq materialni so'rovga qo'shishda kesish chegarasi (bepul limitlarni tejash uchun) */
 const DEP_CHAR_LIMIT = 8000;
 /** Manba material nechta belgigacha so'rovga qo'shiladi */
 const MATERIAL_CHAR_LIMIT = 10000;
 
-function sourceBlock(req: RunRequest, limit: number): string {
+/** Tanlangan kitoblar ro'yxati (kitob matni emas, faqat nomi/muallifi). */
+function booksBlock(req: RunRequest): string {
+  const books = (req.books ?? []) as Book[];
+  return books.length ? fence('manba_kitoblar', formatBooks(books)) : '';
+}
+
+/** Kitob/konspekt matnidan so'rovga eng mos parchalar (uzun bo'lsa tanlab olinadi). */
+function sourceBlock(req: RunRequest, limit: number, query = ''): string {
   const m = req.material?.trim();
   if (!m) return '';
-  return fence('manba_material', m.length > limit ? `${m.slice(0, limit)}\n[…qisqartirildi]` : m);
+  return fence('manba_material', selectRelevant(m, query, limit));
+}
+
+/** Manba rejimi bo'yicha model uchun qisqa qoida. */
+function sourceNote(req: RunRequest): string {
+  if (req.source_mode === 'none') {
+    return "Manba talab qilinmaydi: foydalanuvchi manbasiz ishlashni so'radi. Umumiy bilimga tayan; aniq raqam, statistika va iqtiboslar uchun [MANBA KERAK] qoidasi o'z kuchida.";
+  }
+  if (req.books?.length) {
+    return "Manba qoidasi: ish FAQAT <manba_kitoblar> ro'yxatidagi kitoblarga asoslansin. Har bir muhim fakt, ta'rif va raqamni qaysi kitobdan olganingni (Muallif, yil) ko'rsat. Kitobda borligiga ishonching komil bo'lmagan narsani yozma yoki [KITOBDAN TEKSHIRING] bilan belgila. <manba_material> berilgan bo'lsa, aynan shu matndan foydalan.";
+  }
+  if (req.material?.trim()) return "Manba qoidasi: ish asosan <manba_material> matniga asoslansin; unda yo'q narsani uydirma.";
+  return '';
+}
+
+/** Reja bosqichi uchun manba haqida qisqa ma'lumot. */
+function planSourceText(req: RunRequest): string {
+  const parts = [booksBlock(req)];
+  if (req.material?.trim()) parts.push(`Foydalanuvchi kitob/manba matnini ham berdi (boshi):\n${sourceBlock(req, 1500)}`);
+  parts.push(sourceNote(req));
+  return parts.filter(Boolean).join('\n\n');
 }
 
 function slugify(s: string): string {
@@ -96,16 +127,7 @@ function slugify(s: string): string {
   return slug || 'topshiriq';
 }
 
-/** Model javobidan JSON'ni ajratadi: ``` belgilari va atrofdagi matnni olib tashlaydi. */
-export function extractJson(s: string): string {
-  let t = s.trim();
-  const fence = t.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  if (fence) t = fence[1]!.trim();
-  if (t.startsWith('{') || t.startsWith('[')) return t;
-  const a = t.indexOf('{');
-  const b = t.lastIndexOf('}');
-  return a >= 0 && b > a ? t.slice(a, b + 1) : t;
-}
+export { extractJson };
 
 function short(s: string, n = 60): string {
   const t = s.replace(/\s+/g, ' ').trim();
@@ -412,7 +434,7 @@ export class Orchestrator {
         Plan,
         'mudir',
         req,
-        `${fence('topshiriq', req.task)}${req.material?.trim() ? `\n\nFoydalanuvchi manba material ham berdi (boshi):\n${sourceBlock(req, 1500)}` : ''}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nCheklov: faqat topshiriqda aniq so'ralgan natijalar uchun vazifa ber, o'zingdan qo'shimcha vazifa o'ylab topma. Vazifalar soni ko'pi bilan ${this.cfg.kafedra.limits.max_plan_tasks} ta.\n\nReja tuz.`,
+        `${fence('topshiriq', req.task)}${planSourceText(req) ? `\n\n${planSourceText(req)}` : ''}\n\nMavjud o'qituvchilar:\n${rosterText}\n\nNatija turlari:\n${typesText}\n\nCheklov: faqat topshiriqda aniq so'ralgan natijalar uchun vazifa ber, o'zingdan qo'shimcha vazifa o'ylab topma. Vazifalar soni ko'pi bilan ${this.cfg.kafedra.limits.max_plan_tasks} ta.\n\nReja tuz.`,
         { purpose: 'plan', roster },
         'thinking',
         undefined,
@@ -516,7 +538,7 @@ export class Orchestrator {
         })
         .join('\n');
     const warning = failed.size ? `\n\n> Diqqat: ${failed.size} ta vazifa bajarilmadi.\n` : '';
-    const final = `# ${short(req.task, 100)}\n\n${summary.trim()}${warning}\n\n### Sifat nazorati\n\n${table}\n\n---\n\n${sections.join('\n\n---\n\n')}\n`;
+    const final = `# ${short(req.task, 100)}\n\n${summary.trim()}${warning}\n\n### Sifat nazorati\n\n${table}\n\n### Foydalanilgan manbalar\n\n${this.sourcesSection(req)}\n\n---\n\n${sections.join('\n\n---\n\n')}\n`;
     this.snapshot.final = final;
     this.save('final.md', final);
 
@@ -535,6 +557,41 @@ export class Orchestrator {
   private recordReview(taskId: string, attempt: number, r: Review, unreviewed: boolean, lint: number): void {
     const list = (this.snapshot.reviews[taskId] ??= []);
     list[attempt] = { attempt, verdict: r.verdict, score: r.score, issues: r.issues, unreviewed, lint };
+  }
+
+  /** Yakuniy hujjatdagi "Foydalanilgan manbalar" bo'limi. */
+  private sourcesSection(req: RunRequest): string {
+    const books = (req.books ?? []) as Book[];
+    const lines: string[] = [];
+    if (books.length) lines.push(...books.map((b, i) => `${i + 1}. ${formatBooks([b]).replace(/^1\. /, '')}${b.url ? ` <${b.url}>` : ''}`));
+    if (req.material?.trim()) lines.push(`- Foydalanuvchi bergan matn (${req.material.trim().length} belgi), topshiriqqa mos parchalari ishlatildi.`);
+    if (lines.length) {
+      if (books.length && !req.material?.trim()) {
+        lines.push('', "> Eslatma: kitoblarning to'liq matni berilmagan, shuning uchun ma'lumotlar modelning shu kitoblar haqidagi bilimiga tayanadi. Iqtibos va sahifa raqamlarini kitobdan tekshiring.");
+      }
+      return lines.join('\n');
+    }
+    return req.source_mode === 'none' ? "Foydalanuvchi so'rovi bilan manba talab qilinmagan." : "Manba ko'rsatilmagan.";
+  }
+
+  /** Mavzu bo'yicha kitoblarni qidirib tavsiya qiladi (model so'rov tuzadi, kataloglar tekshiradi). Bitta model so'rovi sarflaydi. */
+  async suggestSources(task: string, fetchFn?: typeof fetch): Promise<SourceSearchResult> {
+    this.emitState('mudir', 'thinking', 'Mos kitoblarni qidiryapman…');
+    try {
+      return await searchSources(
+        task,
+        async (system, user) => {
+          const res = await this.router.complete(
+            { system, messages: [{ role: 'user', content: user }], json: true, maxTokens: MAX_TOKENS.sources, temperature: 0.2, meta: { purpose: 'sources', agentId: 'mudir' } },
+            { agent: 'mudir', role: 'mudir', state: 'thinking' },
+          );
+          return res.text;
+        },
+        fetchFn,
+      );
+    } finally {
+      this.emitState('mudir', 'idle', 'Kitoblar ro\'yxati tayyor');
+    }
   }
 
   /** Joriy ishdagi taqdimot spetsifikatsiyasi (slaydchi yozgan JSON); yo'q bo'lsa null. */
@@ -650,7 +707,9 @@ export class Orchestrator {
           this.emitState(t.assignee, 'writing', attempt ? "Izohlar bo'yicha tuzatyapman…" : 'Yozyapman…', t.id);
           const userMsg = [
             fence('topshiriq', req.task),
-            sourceBlock(req, MATERIAL_CHAR_LIMIT),
+            booksBlock(req),
+            sourceBlock(req, MATERIAL_CHAR_LIMIT, `${req.task} ${t.title} ${t.instructions}`),
+            sourceNote(req),
             `Vazifa: ${t.title}\n${t.instructions}`,
             guide ? `Natija turi ko'rsatmasi (${t.deliverable_type}). Rolingning odatiy formati o'rniga shunga amal qil:\n${guide}` : '',
             `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
@@ -736,6 +795,8 @@ export class Orchestrator {
               `Qabul mezonlari:\n${t.acceptance_criteria.map((c) => `- ${c}`).join('\n') || '-'}`,
               `Vazifa: ${t.title}\n${t.instructions}`,
               lintText,
+              booksBlock(req),
+              req.books?.length ? "Qo'shimcha tekshiruv: matndagi faktlar tanlangan kitoblarga mosmi va kitoblardan tashqari da'volar [KITOBDAN TEKSHIRING] bilan belgilanganmi?" : '',
               fence('tekshiriladigan_matn', text),
             ].join('\n\n'),
             { purpose: 'review', deliverableType: t.deliverable_type, taskTitle: t.title, attempt },

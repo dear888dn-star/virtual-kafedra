@@ -66,6 +66,8 @@ Model nomlari va limitlar tez o'zgaradi. `config/providers.yaml` dagi `# VERIFY`
 | **Limitlar** | Har provayder uchun bugungi so'rovlar / limit va oxirgi almashtirish |
 | **Sozlamalar** | Agentlar, zanjirlar va ogohlantirishlar (tahrir YAML orqali) |
 
+**3D ofis.** Kafedra a'zolari uch o'lchamli personajlar: hammasi universitet formasida (to'q ko'k pidjak, oq ko'ylak, oltin nishon), galstuk/bo'yinbog' va yorliq rangi agentga xos. Mudir va uslubchi ko'zoynakli. Personajlar yuradi, papka ko'taradi, yozadi, o'ylaydi, tekshiradi; belgilar (✓, ⏳, ✕) va nutq pufaklari tepasida chiqadi. WebGL ishlamasa, avtomatik 2D ko'rinishga o'tiladi. **Jins** (erkak/ayol) `config/kafedra.yaml` da `gender: male|female` bilan yoki Boshqaruv panelida (ism va rang yonida) belgilanadi; personajning tashqi ko'rinishi shunga qarab o'zgaradi.
+
 Klaviatura: `Ctrl+Enter` yuboradi, `Alt+1…6` bo'limlarni almashtiradi. Yorug'/qorong'i rejim va animatsiyani o'chirish yuqori o'ng burchakda (`prefers-reduced-motion` hisobga olinadi). Personajlar ustiga sichqoncha olib borsangiz holati ko'rinadi.
 
 ## 4. Sozlash
@@ -80,10 +82,19 @@ Hamma narsa `config/` va `prompts/` da, kodni o'zgartirish shart emas.
 ### Turli topshiriqlarga moslashish
 Mudir topshiriqni tahlil qilib, kerakli **natija turini** va uni bajara oladigan o'qituvchini o'zi tanlaydi. Turlar `config/deliverables.yaml` da: ma'ruza, test, amaliy mashq, **taqdimot**, glossariy, referat/esse, keys-tahlil, dars rejasi, nazorat ishi, sillabus, tahliliy ma'lumotnoma va `general` (boshqa har qanday topshiriq: xat, e'lon, reja va h.k.). Har o'qituvchining bajara oladigan turlari `config/kafedra.yaml` da `skills` ro'yxati bilan beriladi. Yangi tur qo'shish uchun `deliverables.yaml` ga nomi, rubrikasi va `guide` (format ko'rsatmasi) yozish yetarli, kod kerak emas.
 
+### Qaysi kitob asosida ishlash (manba)
+Topshiriq yuborishdan oldin **manbani tanlash majburiy**: kafedra ma'lumotlarni siz tanlagan kitob(lar) asosida shakllantiradi. Uch yo'l bor:
+1. **Kitobim bor:** kitob nomi va muallifini kiriting. Kitobning o'zidan parcha berish uchun `.pdf`, `.txt` yoki `.md` fayl yuklang yoki matnni qo'ying (matnli PDF'dan matn avtomatik olinadi; skaner qilingan rasm-PDF o'qilmaydi). Uzun kitobdan modelga faqat topshiriqqa **mos parchalar** beriladi.
+2. **Mos kitob topib bering:** mavzu bo'yicha model qidiruv so'rovlari va taniqli darsliklar nomlarini taklif qiladi, ular **Open Library katalogida tekshiriladi** (Google Books ham urinib ko'riladi). Faqat katalogda tasdiqlangan kitoblar chiqadi, o'ylab topilgan nomlar chiqmaydi. Bir yoki bir nechtasini tanlaysiz. Bu bitta model so'rovi sarflaydi. Katalog asosan inglizcha kitoblarni topadi.
+3. **Manba kerak emas:** umumiy savol yoki ijodiy ish uchun. Kafedra umumiy bilimga tayanadi, aniq raqamlar baribir `[MANBA KERAK]` bilan belgilanadi.
+
+Tanlangan kitoblar rejaga, har bir o'qituvchiga va uslubchiga beriladi: ma'lumotlar (Muallif, yil) bilan kitobga bog'lanadi, kitobda borligiga ishonch bo'lmagan joy `[KITOBDAN TEKSHIRING]` bilan belgilanadi. Yakuniy hujjatda **Foydalanilgan manbalar** bo'limi (ISBN va havola bilan) bo'ladi.
+**Muhim cheklov:** kitob matni berilmasa, model uni faqat o'z xotirasidan tavsiflaydi: aniqligi kafolatlanmaydi (hujjatda shunday eslatma chiqadi). Eng ishonchli natija uchun kitobdan tegishli bo'lim matnini bering.
+
 ### Taqdimotlar (PowerPoint)
 "Taqdimot", "prezentatsiya" yoki "slayd" so'ralsa Slaydchi slaydlarni JSON spetsifikatsiya sifatida yozadi va undan **chiroyli dizayndagi .pptx** fayli yasaladi.
 - **9 xil maket:** titul, bo'lim, kartali bandlar, ikki ustun, raqamlar (statistika), iqtibos, vaqt chizig'i, jadval, yakun. Maketlar almashinib keladi.
-- **5 ta mavzu:** Okean, Quyosh, Zumrad, Binafsha, Grafit (qorong'i). Slaydchi mavzuga mosini tanlaydi, "Natija" bo'limidagi ro'yxatdan o'zgartirasiz.
+- **10 ta mavzu:** Okean, Quyosh, Zumrad, Binafsha, Grafit (qorong'i), Dengiz, Atirgul, Oltin (rasmiy), Sahro va Tun (qorong'i). Slaydchi mavzuga mosini tanlaydi, "Natija" bo'limidagi ro'yxatdan o'zgartirasiz.
 - **Natija bo'limida jonli ko'rinish:** slaydlar kartochka bo'lib ko'rinadi, ostida spiker izohlari. "PowerPoint (.pptx) yuklab olish" tugmasi faylni beradi. Spiker izohlari faylga ham yoziladi.
 - Slaydlar soni topshiriqda aytilgan songa aniq teng bo'ladi ("8 slayd" desangiz 8 ta), format va maketlar esa avtomatik tekshiriladi.
 - **Prezi:** Prezi'ning ochiq "taqdimot yaratish" API'si tasdiqlanmagan, shuning uchun `.pptx` yasaladi. Uni Prezi'ga **import** qilasiz: prezi.com da yangi taqdimotni PPTX fayldan boshlang (Prezi AI uni qayta quradi) yoki muharrirda Media → PowerPoint.

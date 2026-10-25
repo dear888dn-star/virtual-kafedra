@@ -20,12 +20,15 @@
     "express": "^5.1.0",
     "fflate": "^0.8.3",
     "pptxgenjs": "^4.0.1",
+    "three": "^0.186.1",
+    "unpdf": "^1.9.1",
     "yaml": "^2.8.0",
     "zod": "^3.25.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.0",
     "@types/node": "^22.0.0",
+    "@types/three": "^0.186.0",
     "tsx": "^4.20.0",
     "typescript": "^5.8.0"
   }

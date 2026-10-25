@@ -1,4 +1,4 @@
-import type { AdminLimits, AdminProvider, AdminSettings, AdminUpdate } from '../src/shared/admin';
+import type { AdminAgent, AdminLimits, AdminProvider, AdminSettings, AdminUpdate } from '../src/shared/admin';
 import { h } from './panels';
 
 const root = document.getElementById('root') as HTMLElement;
@@ -82,6 +82,15 @@ function limitsCard(): HTMLElement {
   return card('Chegaralar', "Ishlash hajmi va token sarfini cheklaydi.", grid);
 }
 
+function genderSelect(a: AdminAgent): HTMLSelectElement {
+  const sel = h('select', { 'aria-label': `${a.name} jinsi`, onchange: (e) => { a.gender = (e.target as HTMLSelectElement).value === 'female' ? 'female' : 'male'; touch(); } },
+    h('option', { value: 'male' }, 'Erkak'),
+    h('option', { value: 'female' }, 'Ayol'),
+  );
+  sel.value = a.gender;
+  return sel;
+}
+
 function agentsCard(): HTMLElement {
   const rows = data.agents.map((a) => {
     const color = h('input', { type: 'color', 'aria-label': `${a.name} rangi`, oninput: (e) => { a.color = (e.target as HTMLInputElement).value; touch(); } });
@@ -90,10 +99,11 @@ function agentsCard(): HTMLElement {
       h('span', { class: 'badge' }, a.role),
       textInput(a.name, (v) => (a.name = v), { maxlength: '60', 'aria-label': 'Ism' }),
       textInput(a.title, (v) => (a.title = v), { maxlength: '60', 'aria-label': 'Lavozim' }),
+      genderSelect(a),
       color,
     );
   });
-  return card('Agentlar', "Ism, lavozim va rang. Rollar va promptlar o'zgarmaydi.", ...rows);
+  return card('Agentlar', "Ism, lavozim, jins (3D personaj ko'rinishi) va rang. Rollar va promptlar o'zgarmaydi.", ...rows);
 }
 
 function providerRow(p: AdminProvider): HTMLElement {
@@ -177,7 +187,7 @@ function collect(): AdminUpdate {
   return {
     kafedra: data.kafedra,
     limits: data.limits,
-    agents: data.agents.map(({ id, name, title, color }) => ({ id, name, title, color })),
+    agents: data.agents.map(({ id, name, title, color, gender }) => ({ id, name, title, color, gender })),
     providers: data.providers.map(({ id, enabled, model, rpm, rpd, tpm }) => ({ id, enabled, model, rpm, rpd, tpm })),
     chains: data.chains,
     mock_forced: data.mock_forced,

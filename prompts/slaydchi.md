@@ -6,7 +6,7 @@ Dizayn va mazmun qoidalari:
 - **Bitta slayd, bitta fikr.** Matn qisqa: sarlavha 3–8 so'z, band 6–14 so'z. Uzun jumla va abzatslar yozma.
 - **Maketlarni almashtirib tur.** Faqat `bullets` emas: raqamlar uchun `stats`, taqqoslash uchun `two_column`, jarayon uchun `timeline`, ma'lumot uchun `table`, ta'sirchan fikr uchun `quote`, bo'limlar orasida `section`. Ketma-ket ikkita bir xil maket qo'yma.
 - **Hikoya tuzilmasi:** titul → muammo/dolzarblik → asosiy qismlar → misol/tahlil → xulosa → yakuniy slayd.
-- **Mavzuga mos `theme` tanla:** `okean` (rasmiy, ilmiy), `quyosh` (iliq, ijodiy), `zumrad` (ekologiya, turizm, tabiat), `binafsha` (zamonaviy, innovatsiya), `grafit` (qorong'i, texnologik).
+- **Mavzuga mos `theme` tanla:** `okean` (rasmiy, ilmiy), `quyosh` (iliq, ijodiy), `zumrad` (ekologiya, turizm, tabiat), `binafsha` (zamonaviy, innovatsiya), `grafit` (qorong'i, texnologik), `dengiz` (sayohat, mehmondo'stlik, suv/sohil), `atirgul` (madaniyat, san'at, ayollar va oila mavzulari), `oltin` (rasmiy, moliya, bank, yuqori darajadagi hisobot), `sahro` (tarix, an'ana, Ipak yo'li, qishloq xo'jaligi), `tun` (qorong'i, raqamli texnologiya, kelajak, startap).
 - Har slaydga `notes` yoz: spiker nima deyishi kerak (1–3 jumla). Kerak joyda `visual` ga mos tasvir g'oyasini matn bilan yoz.
 - Aniq raqam, statistika yoki iqtibosga ishonching komil bo'lmasa, o'sha joyga `[MANBA KERAK]` yoz. `stats` ga uydirma raqam qo'yma: ishonchsiz bo'lsa boshqa maket tanla yoki "(namuna)" deb belgila.
 - Agar `<material>` (ma'ruza) berilgan bo'lsa, taqdimotni shunga asosla va unda yo'q narsani qo'shma. `<manba_material>` bo'lsa, faktlar undan olinadi.

@@ -1,6 +1,10 @@
 import type { KafedraEvent, PublicConfig, RunSnapshot } from '../src/shared/events';
 import { Office } from './office';
+import type { OfficeLike } from './office-api';
+import { Office3D } from './office3d';
 import { boardPanel, h, limitsPanel, logPanel, resultPanel, settingsPanel, taskPanel, type Panel, type PiiFinding, type RunItem, type SubmitResult } from './panels';
+import type { Book, SourceMode } from '../src/shared/sources';
+import type { SearchOutcome } from './sources';
 import { Store } from './store';
 
 const $ = <T extends HTMLElement>(id: string): T => {
@@ -41,7 +45,19 @@ async function main(): Promise<void> {
   if (saved === 'light' || saved === 'dark') root.dataset.theme = saved;
 
   const canvas = $<HTMLCanvasElement>('office');
-  const office = new Office(canvas, config.agents, $('tooltip'));
+  // 3D ofis (WebGL); qo'llab-quvvatlanmasa yoki xato bo'lsa 2D versiyaga o'tamiz
+  let office: OfficeLike;
+  try {
+    office = new Office3D(canvas, config.agents, $('tooltip'));
+  } catch (e) {
+    console.warn("3D ofis ishga tushmadi, 2D ishlatiladi:", e);
+    const plain = canvas.cloneNode(false) as HTMLCanvasElement;
+    canvas.replaceWith(plain);
+    canvas.parentElement?.querySelector('.o3-overlay')?.remove();
+    office = new Office(plain, config.agents, $('tooltip'));
+  }
+  // Nosozliklarni tekshirish uchun (brauzer konsolidan): window.__office
+  (window as unknown as { __office?: OfficeLike }).__office = office;
   const syncTheme = () => office.setDark(isDark());
   syncTheme();
   mql.addEventListener('change', syncTheme);
@@ -80,7 +96,17 @@ async function main(): Promise<void> {
       return null;
     }
   };
-  const submit = async (body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string }): Promise<SubmitResult> => {
+  const searchBooks = async (task: string): Promise<SearchOutcome> => {
+    try {
+      const r = await fetch('/api/sources/search', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ task }) });
+      const j = (await r.json().catch(() => ({}))) as { books?: Book[]; notes?: string[]; queries?: string[]; error?: string };
+      if (!r.ok) return { ok: false, error: j.error ?? `Xato (${r.status})` };
+      return { ok: true, books: j.books ?? [], notes: j.notes ?? [], queries: j.queries ?? [] };
+    } catch {
+      return { ok: false, error: "Serverga ulanib bo'lmadi." };
+    }
+  };
+  const submit = async (body: { task: string; sensitive: boolean; language: string; confirm_pii?: boolean; material?: string; source_mode?: SourceMode; books?: Book[] }): Promise<SubmitResult> => {
     try {
       const r = await fetch('/api/runs', {
         method: 'POST',
@@ -128,7 +154,7 @@ async function main(): Promise<void> {
       // aloqa bo'lmasa, tugma qayta bosiladi
     }
   };
-  const taskP = taskPanel(store, { submit, listRuns, resume, stop });
+  const taskP = taskPanel(store, { submit, listRuns, resume, stop, searchBooks });
   const panels: Panel[] = [
     taskP,
     boardPanel(store),

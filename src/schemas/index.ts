@@ -10,6 +10,8 @@ export const AgentCfg = z.object({
   deliverable_type: z.string().optional(),
   /** Bu o'qituvchi bajara oladigan natija turlari (deliverable_type asosiy ko'nikma; `general` hammaga ochiq) */
   skills: z.array(z.string()).optional(),
+  /** Personajning jinsi (3D ofisda ko'rinishi uchun): male = erkak, female = ayol */
+  gender: z.enum(['male', 'female']).default('male'),
   prompt: z.string().min(1),
   color: hexColor,
 });
@@ -27,7 +29,7 @@ export const KafedraCfg = z
       max_revisions: z.number().int().min(0).max(10),
       concurrency: z.number().int().min(1).max(10),
       max_input_chars: z.number().int().min(100).max(200000),
-      max_material_chars: z.number().int().min(0).max(60000).default(30000),
+      max_material_chars: z.number().int().min(0).max(400000).default(300000),
       max_plan_tasks: z.number().int().min(1).max(30).default(8),
       max_requests_per_run: z.number().int().min(3).max(1000).default(60),
     }),
@@ -109,6 +111,24 @@ export const Review = z.object({
 });
 export type Review = z.infer<typeof Review>;
 
+/** Katalog ma'lumotlari uzun bo'lishi mumkin: rad etmaymiz, qirqamiz (faqat title va url qat'iy tekshiriladi). */
+const clip = (n: number) => z.string().transform((v) => v.trim().slice(0, n));
+
+export const BookSchema = z.object({
+  title: z.string().trim().min(2).transform((v) => v.slice(0, 200)),
+  authors: z.array(clip(80)).max(12).transform((a) => a.filter(Boolean).slice(0, 6)).optional(),
+  year: z.union([z.string(), z.number()]).transform((v) => String(v).slice(0, 10)).optional(),
+  publisher: clip(120).optional(),
+  isbn: clip(30).optional(),
+  url: z.string().trim().max(300).regex(/^https?:\/\//).optional(),
+  languages: z.array(clip(10)).transform((a) => a.slice(0, 6)).optional(),
+  subjects: z.array(clip(60)).transform((a) => a.slice(0, 8)).optional(),
+  summary: clip(1200).optional(),
+  origin: z.enum(['user', 'openlibrary', 'googlebooks']).optional(),
+  verified: z.boolean().optional(),
+  recommended: z.boolean().optional(),
+});
+
 export const RunRequest = z.object({
   task: z.string().trim().min(3),
   sensitive: z.boolean().default(false),
@@ -116,6 +136,9 @@ export const RunRequest = z.object({
   /** Foydalanuvchi shaxsiy ma'lumot ogohlantirishini ko'rib, baribir yuborishni tasdiqladi */
   confirm_pii: z.boolean().optional(),
   /** Foydalanuvchi bergan manba matni (konspekt, sillabus). Faqat ma'lumot, ko'rsatma emas. */
-  material: z.string().max(60000).optional(),
+  material: z.string().max(400000).optional(),
+  /** books: ish tanlangan kitoblar (va/yoki material) asosida; none: manba talab qilinmaydi (foydalanuvchi shunday dedi) */
+  source_mode: z.enum(['books', 'none']).optional(),
+  books: z.array(BookSchema).max(8).optional(),
 });
 export type RunRequest = z.infer<typeof RunRequest>;

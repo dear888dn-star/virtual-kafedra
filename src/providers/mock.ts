@@ -193,6 +193,14 @@ export class MockProvider implements Provider {
         );
         break;
       }
+      case 'sources': {
+        await this.delay(400, 900, seed);
+        text = JSON.stringify({
+          queries: ['tourism economics', 'hospitality management', 'entrepreneurship fundamentals'],
+          known_books: [{ title: 'Tourism Economics and Policy', author: 'Larry Dwyer' }],
+        });
+        break;
+      }
       case 'assemble': {
         await this.delay(900, 1600, seed);
         text = `Kafedra "${topic}" mavzusi bo'yicha barcha materiallarni tayyorladi: ma'ruza, test, mashqlar, slaydlar va glossariy. [MANBA KERAK] belgilari qo'yilgan joylarni ishlatishdan oldin manba bilan tekshiring.`;

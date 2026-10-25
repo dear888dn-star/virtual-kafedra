@@ -9,25 +9,28 @@ limits:
   max_revisions: 2 # uslubchi qaytargan ishni necha marta qayta ishlash mumkin
   concurrency: 3 # bir vaqtda ishlaydigan o'qituvchilar soni
   max_input_chars: 20000 # topshiriq matnining maksimal hajmi
-  max_material_chars: 30000 # manba materialning maksimal hajmi
+  max_material_chars: 300000 # manba materialning (kitob matnining) maksimal hajmi; modelga faqat mos parchalari beriladi
   max_plan_tasks: 8 # mudir bitta topshiriqni ko'pi bilan nechta vazifaga bo'la oladi
   max_requests_per_run: 60 # bitta topshiriq uchun model so'rovlarining qat'iy chegarasi (tokenlarni himoya qiladi)
 
 # Agentlar. O'qituvchi qo'shish uchun yangi qator yozing (role: oqituvchi).
 agents:
   - id: mudir
+    gender: female
     name: Prof. Marina Petrovna
     role: mudir
     title: Kafedra mudiri
     prompt: mudir.md
     color: "#7a3b3b"
   - id: uslubchi
+    gender: male
     name: Dostonboy
     role: uslubchi
     title: Uslubchi
     prompt: uslubchi.md
     color: "#8a2d6b"
   - id: t1
+    gender: male
     name: Dilshod
     role: oqituvchi
     title: Ma'ruzachi
@@ -36,6 +39,7 @@ agents:
     prompt: ma-ruzachi.md
     color: "#2f6f8f"
   - id: t2
+    gender: male
     name: Sarvar
     role: oqituvchi
     title: Testchi
@@ -44,6 +48,7 @@ agents:
     prompt: testchi.md
     color: "#3f7d4e"
   - id: t3
+    gender: male
     name: Sardor
     role: oqituvchi
     title: Amaliyotchi
@@ -52,6 +57,7 @@ agents:
     prompt: amaliyotchi.md
     color: "#b5702a"
   - id: t4
+    gender: female
     name: Mubina
     role: oqituvchi
     title: Slaydchi
@@ -60,6 +66,7 @@ agents:
     prompt: slaydchi.md
     color: "#6a4fb0"
   - id: t5
+    gender: male
     name: Arslon
     role: oqituvchi
     title: Lingvist
